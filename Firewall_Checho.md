@@ -5,13 +5,12 @@ Primero se instala el firewall pfSense en vmware:
 1. Descargamos la imagen ISO de https://www.pfsense.org/download/
 
 2. Creamos la máquina virtual en vmware con la imagen ISO de pfSense
-
-  ![Creación VM](/images/Creacion_Maquina_virtual_pfSense_ISO.png)
+     - ![Creación VM](/images/Creacion_Maquina_virtual_pfSense_ISO.png)
 
 5. Crear la Red interna desde Virtual Network Editor (correr como administrador)
-  - Esta red será del tipo Host-Only
-  - Desactivamos el DHCP, para que esto sea manejado por el fiurewall como tal y no la maquina virtual.
-  - ![Virtual Network Editor](/images/Virtual_Network_Editor_config.png)
+    - Esta red será del tipo Host-Only
+    - Desactivamos el DHCP, para que esto sea manejado por el fiurewall como tal y no la maquina virtual.
+    - ![Virtual Network Editor](/images/Virtual_Network_Editor_config.png)
 
 4. Configuramos la máquina virtual para que tenga 2 adaptadores de red (uno para WAN y otro para la LAN)
   - Antes de iniciar la máquina virtual añadimos un adaptador de red y le ponemos 2 procesadores (minimo) y 4 de RAM.
