@@ -25,6 +25,7 @@ Primero se instala el firewall pfSense en vmware:
 6. Validamos que se hayan instalado correctamente viendo las IP's asignadas a las interfaces.
      - ![Validacion asignacion correcta](/images/Validacion_config_interfaces.png)
 
-8. Probamos conectividad en internet
+7. Probamos conectividad en internet
      - Para esto usé el comando "ping 8.8.8.8"
+     - ![Prueba Conexion](/images/prueba_conexion.png)
 
