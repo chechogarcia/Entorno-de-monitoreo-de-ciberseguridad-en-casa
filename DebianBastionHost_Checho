@@ -1,0 +1,34 @@
+Creamos una maquina virtual con Debian (En este caso usé Debian 13.4)
+Lo montamos en la red de Management (10.0.40.0/28)
+Al configurar la maquina virtual le damos 2 GB de RAM y 20 GB de Disco pues al ser un Bastion Host no neecesita muchos recursos y debe correr lo más mínimo
+
+Al encender la máquina virtual, como no se ha configurado ninguna regla para esta red en el firewall, no va a tener conectividad. Por lo que es necesario configurar las opciones de red manualmente.
+
+Mantenemos el default gateway y el name server (DNS) como 10.0.40.1
+Cuando se configure el DNS en la red de servidores cambiaremos el DNS en esta máquina
+
+Incluimos tambien un servidor de fallback (En este caso usaremos 8.8.8.8)
+
+Como este es un ambiente local y de prueba, cuando se solicita el nombre del dominio usaremos lab.internal
+
+De esta forma el FQDN será bastion01.lab.internal
+
+Lo ideal, y para mejora la seguridad, es desactivar el acceso con root de forma remota. Esto lo hace Debian automaticamente si no se establece una contraseña para el usuario root en la configuracion de usuarios.
+
+Al hacer esto nos pedira que creemos un usuario que va a tener menos privilegios que el superusuario, pero que puede usar root para acceso privilegiado temporal. Se pedira un nombre de usuario y una contraseña
+
+Continuando la configuracion se nos va a pedir que configuremos un packet manager. Esto se maneja automaticamente en la instalacion, entonces solo seleccionamos el mirror de Estados Unidos y el mirror deb.debian.org
+
+Despues se pregunta por un proxy. Como estamos por ahora comenzando no se incluye un proxy, sin embargo, para futuras actividades (Como Web filtering, Traffic inspection, Malware sandboxing, Corporate simulation) podemos desplegar un Squid, Burp Suite o mitmproxy
+
+Ahora, para que se instalen los paquetes la maquina debe tener acceso a internet, por lo que añadimos una regla que permita el trafico de cualquier subred de management hacia afuera (outbould rule)
+
+Se crea una regla que permite todo trafico IPV4 hacia afuera, sin embargo, esta regla se debe modificar mas adelante para solo permitir tráfico necesario hacia afuera (Ejemplo: DNS, HTTP/HTTPS, SSH/RDP) Todo el resto de trafico innecesario se deberia bloquear
+
+Como la instalacion para un servidor Bastion debe ser minima, en la pestaña de "Software Selection", solo seleccionamos las casillas de "SSH Server" y "standard system utilities". Esto instalará openssh para la administracion remota, acceso seguro por shell, tunneling ssh, SCP/SFTP y pivoteo y manejo
+
+No se incluye la GUI porque esta es mas dificil de asegurar (harden), es mas pesada y tiene una mayor superficie de ataque
+
+Despues, como este es el unico sistema operativo en la maquina virtual, instalamos el GRUB boot loader como se haria en una maquina fisica normal
+
+Aqui termina la instalacion y se reinicia la maquina virtual y ya se puede acceder a ella con el usuario que creamos anteriormente
