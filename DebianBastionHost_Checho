@@ -32,3 +32,19 @@ No se incluye la GUI porque esta es mas dificil de asegurar (harden), es mas pes
 Despues, como este es el unico sistema operativo en la maquina virtual, instalamos el GRUB boot loader como se haria en una maquina fisica normal
 
 Aqui termina la instalacion y se reinicia la maquina virtual y ya se puede acceder a ella con el usuario que creamos anteriormente
+
+-----------------------------------------------------------------------------------------------------------------------------------------------------
+#Hardening
+
+Despues de completar la instalación probamos conectividad
+
+ip a
+
+ip route (deberia mostrar la default gateway como la configuramos)
+
+ping <default gateway>
+ping 8.8.8.8
+ping google.com
+
+sudo apt update && sudo apt upgrade -y
+
