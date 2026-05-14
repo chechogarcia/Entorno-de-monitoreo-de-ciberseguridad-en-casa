@@ -29,3 +29,16 @@ Primero se instala el firewall pfSense en vmware:
      - Para esto usé el comando "ping 8.8.8.8"
      - ![Prueba Conexion](/images/prueba_conexion.png)
 
+---------------------------------------------------------------------------------------------
+
+Me di cuenta que las maquinas virtuales conectadas al firewall estaban teniendo problemas de conectividad hasta que se reiniciara el firewall. 
+
+Para solucionar esto cambiaré el tipo de adaptador de red de cada una de las interfaces de red conectadas a la maquina virtual.
+
+Para esto editamos el archivo de configuracion de la maquina virtual usando el block de notas. En este caso el archivo tiene nombre "pfSens Firewall.vmx" y toca encontrarlo en la carpeta donde esta insalada la vm
+
+Ya dentro del archivo buscamos todas las lineas que tengan la forma ethernet0.virtualDev = "e1000" o "vlance" y cambiamos lo que hay entre comillas por "vmxnet3"
+
+Guardamos los cambios y cerrramos el archivo de texto.
+
+Despues de esto, al volver a encender la vm, tocara reasignar las interfaces pues van a cambiar de nombre de em0 o le0 a vmxsbX o vmx
