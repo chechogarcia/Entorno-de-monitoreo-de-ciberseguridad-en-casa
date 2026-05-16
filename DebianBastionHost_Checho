@@ -48,3 +48,81 @@ ping google.com
 
 sudo apt update && sudo apt upgrade -y
 
+Despues de actualizar los paquetes deshabilitamos la regla del firewall que permite el acceso a internet. 
+
+
+-----------------------------------------------------------------------------------------------------------------------------------------------------
+Ahora, para instalar herramientas como vim, curl/wget, tmux, htop, nmap, tcpdump, ufw, fail2ban, dnsutils, y para recibir actualizaciones de los paquetes debemos añadir una regla en el firewall que permita este tráfico
+
+El firewall PfSense permite resolver nombres de dominio especificos y actualizar dinamicamente sus reglas de firewall usando el FDQN Alias que se haya configurado.
+
+Para hacer esto abrimos la GUI del firewall y vamos al apartado Firewall>Aliases en la pestaña IP
+
+Presionamos 'Add' y creamos un alias de la siguiente forma:
+
+  1. Name: Bastion_Repo_Domains
+  2. Type: Host(s)
+
+Y añadimos el FDQN abajo.
+  deb.debian.org
+  security.debian.org
+
+Guardamos y aplicamos los cambios.
+
+Antes de continuar a crear las reglas para autorizar este trafico tomamos un snapshot del firewall y del Bastion.
+
+*Insertar fotos snapshots*
+
+
+Ahora creamos las reglas para permitir el trafico hacia afuera desde el bastion host.
+
+1. Entramos a las reglas de la interfaz a la que esta conectado el Bastion y añadimos las siguientes reglas:
+
+Action: Pass
+Protocol: TCP/UDP
+Source: Single Host or Alias -> [Your Bastion Host IP]
+Destination: Any or Interface Address
+Port Range: 53 (DNS)
+Description: Allow DNS from Bastion Host
+
+
+Action: Pass
+Protocol: TCP
+Source: Single Host or Alias -> [Your Bastion Host IP]
+Destination: Single Host or Alias -> Bastion_Repo_Domains
+Port Range: HTTP and HTTPS (You can create a Port Alias for 80 and 443, or create two separate rules)
+Description: Allow Package Downloads from Bastion Host
+
+Aplicamos los cambios
+
+
+Ahora, para verificar la funcionalidad de estos cambios realizamos los siguientes pasos en el bastion host:
+
+1. Borramos el cache de los paquetes viejos
+  sudo apt-get clean
+2. Actualizamos los paquetes para verificar que pfsense permite el trafico
+  sudo apt-get update
+
+
+
+
+
+
+
+
+-----------------------------------------------------------------------------------------------------------------------------------------------------
+Antes de continuar con las configuraciones de ssh, es necesario asegurar el bastion como tal. No la forma de conectarse a él.
+
+Usando este articulo de guía (https://goteleport.com/blog/security-hardening-ssh-bastion-best-practices/) haremos los siguientes pasos para asegurar el bastion.
+
+
+
+1. Limitar los servicios que corren en el Host
+Como la instalacion la hicimos bastante mínima, no hay casi servicios innecesarios. 
+
+Servicios como getty@ttyX.service (Corre el programa de login en la consola del bastion) pueden deshabilitarse si solo se va a hacer gestion via ssh. Pero por ahora no lo haremos
+
+El general los servicios activos que ya hay no representan nada innecesario ni un efecto muy grande en la superficie de ataque, por lo que no haremos cambios.
+
+
+2. Bloquear capacidades de red del Sistema Operativo (Lock down OS networking capabilities)
