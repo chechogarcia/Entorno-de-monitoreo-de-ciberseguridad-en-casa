@@ -164,20 +164,103 @@ sudo apparmor_parser -r /etc/apparmor.d/nombre.del.perfil
 
 Finalmente, se regresa el programa al modo estricto (Enforce):
 sudo aa-enforce /ruta/al/programa
-
 -----------------------------------------------------------------------------------------------------------------------------------------------------
-Antes de continuar con las configuraciones de ssh, es necesario asegurar el bastion como tal. No la forma de conectarse a él.
 
-Usando este articulo de guía (https://goteleport.com/blog/security-hardening-ssh-bastion-best-practices/) haremos los siguientes pasos para asegurar el bastion.
-
+Ahora desplegamos fail2ban, ufw, el autenticador de google y auditd
 
 
-1. Limitar los servicios que corren en el Host
-Como la instalacion la hicimos bastante mínima, no hay casi servicios innecesarios. 
+1. ufw
 
-Servicios como getty@ttyX.service (Corre el programa de login en la consola del bastion) pueden deshabilitarse si solo se va a hacer gestion via ssh. Pero por ahora no lo haremos
+En ufw debemos permitir el trafico desde la subred de manejo y el trafico ssh publico
 
-El general los servicios activos que ya hay no representan nada innecesario ni un efecto muy grande en la superficie de ataque, por lo que no haremos cambios.
+sudo ufw allow from 10.0.40.0/28
+sudo ufw allow 22/tcp
+
+sudo ufw enable
 
 
-2. Bloquear capacidades de red del Sistema Operativo (Lock down OS networking capabilities)
+2. Configurar el autenticador de google (PAM MFA)
+
+Correr el comando:
+google-authenticator
+
+Follow the on-screen prompts: Say Y to time-based tokens, Y to disallow multiple uses of the same token, N to the wide time-window, and Y to rate-limiting.
+
+Actualizar la configuracion del PAM (Pluggable Authentication Modules) - PAM es un marco centralizado que gestiona la seguridad y la autenticación de usuarios
+sudo nano /etc/pam.d/sshd
+
+Adicionar esta linea al comienzo del archivo justo debajo de la linea @include common-auth (nullok sirve para evitar el lockout si no se ha configurado la autenticacion para el usuario - se desactiva cuando termine el testeo)
+auth required pam_google_authenticator.so nullok
+
+Se adiciona la linea en ese lugar para que no haya problemas con el setup de las claves ssh. Si se deja antews de esa linea cuando quiera iniciar sesion se pediria el codigo de google antes de pedir la conexion ssh
+
+
+Finalmente, actualizamos la configuracion del servicio de ssh
+
+sudo nano /etc/ssh/sshd_config
+
+Modificamos el archivo para que incluya estas lineas
+
+  PermitRootLogin no
+  
+  PubkeyAuthentication yes
+  PasswordAuthentication yes
+  
+  KbdInteractiveAuthentication yes
+  ChallengeResponseAuthentication yes
+  
+  UsePAM yes
+  
+  AuthenticationMethods publickey,keyboard-interactive
+  
+  X11Forwarding no
+  AllowAgentForwarding no
+  PermitTunnel no
+  
+  MaxAuthTries 3
+  LoginGraceTime 30
+
+Guardamos y corremos el siguiente comando para verificar que la configuracion esta bien escrita (Si no aparece nada es porque la configuracion esta bien):
+
+sudo sshd -t
+
+Reiniciar SSH
+sudo systemctl restart ssh
+
+
+3. Conectar Fail2Ban a UFW
+
+Crear una copia del archivo de configuracion de fail2ban
+
+sudo cp /etc/fail2ban/jail.conf /etc/fail2ban/jail.local
+sudo nano /etc/fail2ban/jail.local
+
+Modificamos el parametro "banaction" en la seccion [DEFAULT] y verificamos que la red de manejo este en la whitelist
+
+  [DEFAULT]
+  ignoreip = 127.0.0.1/8 ::1 10.0.40.0/28
+  bantime  = 1h     # How long an IP is banned
+  findtime  = 10m   # Time window to count failed attempts
+  maxretry = 3      # Number of failures before ban
+  banaction = ufw
+  
+  [sshd]
+  enabled = true
+  port    = ssh     # Or your custom SSH port
+
+Habilitar e iniciar el servicio para aplicar los cambios:
+
+  sudo systemctl enable fail2ban
+  sudo systemctl start fail2ban
+
+
+Use the fail2ban-client to check the status of your jails or unban yourself if necessary.
+
+Check jail status: sudo fail2ban-client status sshd
+Unban an IP: sudo fail2ban-client set sshd unbanip <IP_ADDRESS>
+View logs: tail -f /var/log/fail2ban.log
+
+
+Como estamos requiriendo doble autenticacion (clave ssh y codigo mfa) la configuracion de fail2ban probablemente no agarre los intentos fallidos de MFA, porque los logs son distintos a los que se forman por contraseña incorrecta
+
+Para solucionar esto debemos entrar a /var/log/auth.log despues de un intento fallido de MFA para verificar que el filtro sshd de fail2ban coincida con el formato de log.
