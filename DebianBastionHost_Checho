@@ -120,6 +120,51 @@ traceroute/MTR: Para diagnosticar problemas con la conectividad
 
 
 Para todas aplicaciones, como estamos usando Debian 13 (que se especializa en seguridad y estabilidad), hay que revisar si hay algun tipo de bloque por AppArmor (activado por default en Debian)
+
+AppArmor es una utilidad de Linux que sirve para restringir lo que pueden hacer programas especificos. Utiliza perfiles infividuales para restringir las actividades (por ejemplo leer un archivo o restringir a que redes puede acceder)
+
+sudo aa-status | less
+Esto para ver los perfiles cargados en apparmor
+
+Los perfiles que esten en modo "Complain" son aplicaciones que funcionan con normalidad, pero cualquier accion que viole las reglas de AppArmor se registran en el log
+
+Los perfiles que esten en modo "Enforce" son aplicaciones que ApppArmor restringe activamente segun su perfil
+
+Para crear o modificar los perfiles toca instalar un paquete de utilidades:
+sudo apt install apparmor-utils apparmor-profiles
+
+Para modificar los perfiles toca modificar los archivos de texto plano de cada perfil ubicados en /etc/apparmor.d/
+
+Los perfiles se nombran reemplazando las barras diagonales (/) de la ruta del ejecutable por puntos (.). Por ejemplo, el perfil para /usr/bin/ping se encuentra en /etc/apparmor.d/usr.bin.ping.
+Aqui toca entender las reglas basicas:
+
+Para acceso a archivos:
+  r: Permite leer
+  w: Permite escribir o modificar
+  px: Ejecuta el archivo bajo su propio perfil de AppArmor.
+  /**: El doble asterisco significa el directorio actual y todos sus subdirectorios.
+
+Ejemplos:
+  /var/log/nginx/*.log w,      # Permite escribir en cualquier archivo .log dentro de esa ruta
+  /etc/nginx/** r,             # Permite leer todo lo que esté dentro de /etc/nginx/
+
+Para acceso a la red:
+  network inet stream,: Permite conexiones de red TCP (IPv4).
+  network inet6 dgram,: Permite conexiones de red UDP (IPv6).
+
+
+Otra forma es poniendo el programa en "modo aprendizaje" (Complain). Esto logea toda la actividad de ese programa. Despues de usar el programa de forma noprmal se corre el comando:
+sudo aa-logprof
+
+Con esto el sistema leera los logs de actividad y preguntará si quieres denegar o permitir cada una de las acciones. 
+Esta es la forma recomendada.
+
+Despues de modificar las reglas se corre el siguiente comando para recargar el perfil en AppArmor y se apliquen las restricciones en el kernel
+sudo apparmor_parser -r /etc/apparmor.d/nombre.del.perfil
+
+Finalmente, se regresa el programa al modo estricto (Enforce):
+sudo aa-enforce /ruta/al/programa
+
 -----------------------------------------------------------------------------------------------------------------------------------------------------
 Antes de continuar con las configuraciones de ssh, es necesario asegurar el bastion como tal. No la forma de conectarse a él.
 
