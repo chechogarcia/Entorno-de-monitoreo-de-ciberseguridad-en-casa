@@ -111,14 +111,15 @@ curl: Comando para probar connectividad a paginas web por http y https. Tambien 
 auditd: Servicio de linux para auditar (man auditd despues de instalar para leer el manual)
 fail2ban: herramienta para evitar ataques de fuerza bruta
 ufw: firewall local para bloquear trafico malicioso
-
+libpam-google-authenticator: Google Authenticator para MFA al iniciar sesion en el host (man google-authenticator)
+htop: Monitoreo interactivo de telemetria del servidor (CPU, Memory and process usage)
+wazuh agent
+nmap: useful for network discovery and auditing security within the network (no puede salir de la red, solo escaneo hacia adentro)
+tcpdump: para interceptar, capturar y analizar trafico de red (similar a wireshark pero en consola)
+traceroute/MTR: Para diagnosticar problemas con la conectividad
 
 
 Para todas aplicaciones, como estamos usando Debian 13 (que se especializa en seguridad y estabilidad), hay que revisar si hay algun tipo de bloque por AppArmor (activado por default en Debian)
-
-
-
-
 -----------------------------------------------------------------------------------------------------------------------------------------------------
 Antes de continuar con las configuraciones de ssh, es necesario asegurar el bastion como tal. No la forma de conectarse a él.
 
