@@ -105,7 +105,16 @@ Ahora, para verificar la funcionalidad de estos cambios realizamos los siguiente
 
 
 
+Ahora que tenemos acceso al repositorio de paquetes, descargamos herramientas basicas dfe gestion para el bastion Host:
 
+curl: Comando para probar connectividad a paginas web por http y https. Tambien sirve para probar APIs
+auditd: Servicio de linux para auditar (man auditd despues de instalar para leer el manual)
+fail2ban: herramienta para evitar ataques de fuerza bruta
+ufw: firewall local para bloquear trafico malicioso
+
+
+
+Para todas aplicaciones, como estamos usando Debian 13 (que se especializa en seguridad y estabilidad), hay que revisar si hay algun tipo de bloque por AppArmor (activado por default en Debian)
 
 
 
