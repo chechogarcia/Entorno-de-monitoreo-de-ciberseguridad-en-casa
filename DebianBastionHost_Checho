@@ -182,15 +182,15 @@ sudo ufw enable
 2. Configurar el autenticador de google (PAM MFA)
 
 Correr el comando:
-google-authenticator
+  google-authenticator
 
 Follow the on-screen prompts: Say Y to time-based tokens, Y to disallow multiple uses of the same token, N to the wide time-window, and Y to rate-limiting.
 
 Actualizar la configuracion del PAM (Pluggable Authentication Modules) - PAM es un marco centralizado que gestiona la seguridad y la autenticación de usuarios
-sudo nano /etc/pam.d/sshd
+  sudo nano /etc/pam.d/sshd
 
 Adicionar esta linea al comienzo del archivo justo debajo de la linea @include common-auth (nullok sirve para evitar el lockout si no se ha configurado la autenticacion para el usuario - se desactiva cuando termine el testeo)
-auth required pam_google_authenticator.so nullok
+  auth required pam_google_authenticator.so nullok
 
 Se adiciona la linea en ese lugar para que no haya problemas con el setup de las claves ssh. Si se deja antews de esa linea cuando quiera iniciar sesion se pediria el codigo de google antes de pedir la conexion ssh
 
@@ -211,7 +211,7 @@ Modificamos el archivo para que incluya estas lineas
   
   UsePAM yes
   
-  AuthenticationMethods publickey,keyboard-interactive
+  AuthenticationMethods keyboard-interactive
   
   X11Forwarding no
   AllowAgentForwarding no
@@ -230,6 +230,8 @@ sudo systemctl restart ssh
 
 3. Conectar Fail2Ban a UFW
 
+(Otro recurso util para esta configuracion: https://www.alcancelibre.org/manuales/configuracion-de-fail2ban)
+
 Crear una copia del archivo de configuracion de fail2ban
 
 sudo cp /etc/fail2ban/jail.conf /etc/fail2ban/jail.local
@@ -243,6 +245,8 @@ Modificamos el parametro "banaction" en la seccion [DEFAULT] y verificamos que l
   findtime  = 10m   # Time window to count failed attempts
   maxretry = 3      # Number of failures before ban
   banaction = ufw
+  banaction_allports = ufw
+  action = %(action_)s #Esta opcion ya estaactiva y action_ es para bloquear la ip invalida
   
   [sshd]
   enabled = true
@@ -264,3 +268,16 @@ View logs: tail -f /var/log/fail2ban.log
 Como estamos requiriendo doble autenticacion (clave ssh y codigo mfa) la configuracion de fail2ban probablemente no agarre los intentos fallidos de MFA, porque los logs son distintos a los que se forman por contraseña incorrecta
 
 Para solucionar esto debemos entrar a /var/log/auth.log despues de un intento fallido de MFA para verificar que el filtro sshd de fail2ban coincida con el formato de log.
+
+__________________________________________________________________________________________
+
+Despues de probar la connectividad por ssh con contraseña y el codigo de google cambiamos el archivo de ssh
+
+sudo nano /etc/ssh/sshd_config
+
+Y modificamos esta linea para que quede de la siguiente manera:
+
+AuthenticationMethods publickey,keyboard-interactive
+
+
+Esto va a requerir intercambio de llaves para poderse conectar por ssh (lo cual es mas seguro) ademas del codigo del autenticador de google
