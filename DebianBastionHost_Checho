@@ -413,8 +413,21 @@ Esto hace que asi alguien se haya robado la credencial publica, solo se pueda co
 Por cierto, nunca se deberia tener la llave PRIVADA en el bastion. En el bastion unicamente debe estar la PUBLICA.
 _____________________________________________________________________________
 
-Para mejoras futuras, el AdminVM deberia ir en otra subred para que asi el trafico sí sea evaluado por el firewall.
+Para evitar ataques de fuerza bruta en caso de que el AdminVM este comprometido, editamos el archivo de configuracion de fail2ban para que evalue todas las requests
 
+sudo nano /etc/fail2ban/jail.local
+
+Modificamos el parametro "banaction" en la seccion [DEFAULT] para que quede de la siguiente manera:
+
+  [DEFAULT]
+  ignoreip = 127.0.0.1/8 ::1
+
+Habilitar e iniciar el servicio para aplicar los cambios:
+
+  sudo systemctl restart fail2ban
+_____________________________________________________________________________
+
+Para mejoras futuras, el AdminVM deberia ir en otra subred para que asi el trafico sí sea evaluado por el firewall.
 
 
 
