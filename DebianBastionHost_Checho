@@ -317,39 +317,7 @@ Despues de hacerlo, el la terminal del bastion verificamos que si se haya copiad
 
 Deberia aparecer algo asi: ssh-ed25519 AAAAC3...
 
-4. Probar la autenticacion con la llave
-
-En la maquina del administrador correr:
-  ssh sergio@10.0.40.10
-
-En este punto puede preguntar por la passfrase de la llave o directamente por el codigo de google
-
-
-5. Verificar qué llave se esta usando para la conexión
-
-  ssh -v sergio@10.0.40.10
-
-Si aparecen estas dos lineas:
-  Offering public key:
-  Server accepts key
-
-Eso confirma que la llave se esta usando correctamente.
-
-6. Restringir ssh exclusivamwente para el Admin VM
-
-En pfsense crear las reglas:
-
-| Action | Protocol | Source     | Destination | Port |
-| ------ | -------- | ---------- | ----------- | ---- |
-| Pass   | TCP      | 10.0.40.11 | 10.0.40.10  | 22   |
-
-| Action | Protocol | Source   | Destination | Port |
-| ------ | -------- | -------- | ----------- | ---- |
-| Block  | TCP      | OPT3 net | 10.0.40.10  | 22   |
-
-
-
-7. Requerir llave + mfa:
+4. Requerir llave + mfa:
 
 En el bastion:
   sudo nano /etc/ssh/sshd_config
@@ -372,10 +340,43 @@ Verificamos que todo este asi:
   AuthenticationMethods publickey,keyboard-interactive
 
 
-8. Reiniciar SSH
+5. Reiniciar SSH
   
   sudo sshd -t
   sudo systemctl restart ssh
+
+
+6. Probar la autenticacion con la llave
+
+En la maquina del administrador correr:
+  ssh sergio@10.0.40.10
+
+En este punto puede preguntar por la passfrase de la llave o directamente por el codigo de google
+
+
+7. Verificar qué llave se esta usando para la conexión
+
+  ssh -v sergio@10.0.40.10
+
+Si aparecen estas dos lineas:
+  Offering public key:
+  Server accepts key
+
+Eso confirma que la llave se esta usando correctamente.
+
+8. Restringir ssh exclusivamwente para el Admin VM
+
+En pfsense crear las reglas en OPT3:
+
+| Action | Protocol | Source     | Destination | Port |
+| ------ | -------- | ---------- | ----------- | ---- |
+| Pass   | TCP      | 10.0.40.11 | 10.0.40.10  | 22   |
+
+| Action | Protocol | Source   | Destination | Port |
+| ------ | -------- | -------- | ----------- | ---- |
+| Block  | TCP      | OPT3 net | 10.0.40.10  | 22   |
+
+
 
 9. Testear antes de cerrar la session
 
@@ -410,3 +411,16 @@ Cambiar:
 Esto hace que asi alguien se haya robado la credencial publica, solo se pueda conectar desde 10.0.40.11
 
 Por cierto, nunca se deberia tener la llave PRIVADA en el bastion. En el bastion unicamente debe estar la PUBLICA.
+_____________________________________________________________________________
+
+Para mejoras futuras, el AdminVM deberia ir en otra subred para que asi el trafico sí sea evaluado por el firewall.
+
+
+
+
+For a realistic bastion architecture, many organizations place:
+
+Admin workstation in one subnet/VLAN
+Bastion in a different management subnet/VLAN
+
+so that all SSH traffic must cross a firewall and can be filtered, logged, and monitored. In your lab, you may eventually want to separate the Admin VM and Bastion into different management segments if your goal is to practice enterprise-style access control.
