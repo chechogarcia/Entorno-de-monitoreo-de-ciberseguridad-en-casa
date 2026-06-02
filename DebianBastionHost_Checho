@@ -437,3 +437,10 @@ Admin workstation in one subnet/VLAN
 Bastion in a different management subnet/VLAN
 
 so that all SSH traffic must cross a firewall and can be filtered, logged, and monitored. In your lab, you may eventually want to separate the Admin VM and Bastion into different management segments if your goal is to practice enterprise-style access control.
+
+
+Lecturas adicionales para mejoras futuras:
+https://goteleport.com/blog/security-hardening-ssh-bastion-best-practices/
+https://weakdh.org/
+https://www.google.com/search?q=el+protocolo+icmp+es+vulnerable%3F&rlz=1C1GCEA_enCO1162CO1162&gs_lcrp=EgZjaHJvbWUyBggAEEUYOTIHCAEQIRigATIHCAIQIRigAdIBCDgwNTJqMGo3qAIAsAIA&sourceid=chrome&ie=UTF-8&udm=50&fbs=ADc_l-bpk8W4E-qsVlOvbGJcDwpn60DczFdcvPnuv8WQohHLTaf9fS4tJ71bi2aHS-Pmeg0IA2nDWC3A9mnYKHxHonOwOArVa2mNEvEuOSTSa1dtwqTXiOEVAUkLmHqJS4NtOQBb5Y1SA11p0AKFH_iW_mlh-tTME_h7m1BDKcl9pi7TjFC6G6peerUfIZ5AehTCpBR6CaUu-gbsdEbUkKFZjmqUppXPSQ&aep=10&ntc=1&mstk=AUtExfCBKKBE20LseT9SRIkknmiZZ7w10wOxCwspEi37oGoQl3iOdcubHhUqkKQIMLJoTZVi9xnG8ViP651Ndhyub8h13UkHbLX_MQ439JZMQgB_RiaaHosh1rraOVQVILCeeP7ErzI3tv0E2hjLKXi9czD5Oqy7JBKZY0XQTw8B71ar6qHyWkBQyAJy7UbU5s4SmqWQXlQyyUPY1ZeC08z9mGkucfhI9poRkZ27DILgVdaZnn54cXmtqkmmhw&aioh=3&csuir=1&cs=1&mtid=B0gXaoerJY2HwbkP8YPUyA0
+https://nvd.nist.gov/vuln/detail/CVE-2020-27347
