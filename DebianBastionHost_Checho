@@ -271,13 +271,142 @@ Para solucionar esto debemos entrar a /var/log/auth.log despues de un intento fa
 
 __________________________________________________________________________________________
 
-Despues de probar la connectividad por ssh con contraseña y el codigo de google cambiamos el archivo de ssh
+Despues de probar la connectividad por ssh con contraseña y el codigo de google, creamos una nueva maquina que va a aser como la de un administrador que se conecta al bastion con ssh
 
-sudo nano /etc/ssh/sshd_config
+Como el nuevo host esta dentro de la red de manejo el trafico ssh no pasa por el firewall, por lo que, asi no haya configurado una regla para el firewall que permita el ssh desde este nuevo host, la conexion igualmente es exitosa.
+
+Cuando probamos el ssh, si todo quedó bien configurado, pedira contraseña y codigo de google, y despues de esto se hará la conexion.
+
+___________________________________________________________________________________________
+
+Ahora que vemos que la conexion por ssh con clave funciona, probaremos con las llaves publicas.
+
+Para esto se debe crear una pareja de llaves publica-privada en el Host del administrador.
+
+1. Crear pareja de llaves en la maquina de administrador
+
+  ssh-keygen -t ed25519 -a 100
+
+Why?
+
+  Ed25519 is the modern SSH algorithm.
+  Smaller keys.
+  Faster.
+  Excellent security.
+
+Aceptar el default cuando se pida "Enter file in which to save the key"
+
+Tambien, usar una passfrase cuando la pida
+
+2. Verificar las llaves
+
+  ls -l ~/.ssh
+
+Esto mostrara la pareja de llaves (los permisos deberian ser iguales a los que se muestran en el ejemplo):
+  -rw------- id_ed25519
+  -rw-r--r-- id_ed25519.pub
+
+3. Copiar la llave publica al bastion
+
+  ssh-copy-id sergio@10.0.40.10
+
+Nos va a pedir la clave de sergio@10.0.40.10, entonces la ponemos. Esto creará ~/.ssh en el bastion, authorized_keys, pondrá permisos, copiara la llave publica
+
+Despues de hacerlo, el la terminal del bastion verificamos que si se haya copiado la llave publica: 
+  cat ~/.ssh/authorized_keys
+
+Deberia aparecer algo asi: ssh-ed25519 AAAAC3...
+
+4. Probar la autenticacion con la llave
+
+En la maquina del administrador correr:
+  ssh sergio@10.0.40.10
+
+En este punto puede preguntar por la passfrase de la llave o directamente por el codigo de google
+
+
+5. Verificar qué llave se esta usando para la conexión
+
+  ssh -v sergio@10.0.40.10
+
+Si aparecen estas dos lineas:
+  Offering public key:
+  Server accepts key
+
+Eso confirma que la llave se esta usando correctamente.
+
+6. Restringir ssh exclusivamwente para el Admin VM
+
+En pfsense crear las reglas:
+
+| Action | Protocol | Source     | Destination | Port |
+| ------ | -------- | ---------- | ----------- | ---- |
+| Pass   | TCP      | 10.0.40.11 | 10.0.40.10  | 22   |
+
+| Action | Protocol | Source   | Destination | Port |
+| ------ | -------- | -------- | ----------- | ---- |
+| Block  | TCP      | OPT3 net | 10.0.40.10  | 22   |
+
+
+
+7. Requerir llave + mfa:
+
+En el bastion:
+  sudo nano /etc/ssh/sshd_config
 
 Y modificamos esta linea para que quede de la siguiente manera:
 
-AuthenticationMethods publickey,keyboard-interactive
+  AuthenticationMethods publickey,keyboard-interactive
 
 
-Esto va a requerir intercambio de llaves para poderse conectar por ssh (lo cual es mas seguro) ademas del codigo del autenticador de google
+Verificamos que todo este asi:
+
+  PermitRootLogin no
+
+  PubkeyAuthentication yes
+  PasswordAuthentication no
+  
+  KbdInteractiveAuthentication yes
+  UsePAM yes
+  
+  AuthenticationMethods publickey,keyboard-interactive
+
+
+8. Reiniciar SSH
+  
+  sudo sshd -t
+  sudo systemctl restart ssh
+
+9. Testear antes de cerrar la session
+
+Abrir otra terminal para el admin VM y volver a probar
+
+  ssh sergio@10.0.40.10
+
+
+El flow deberia ser el siguiente:
+
+  SSH key accepted
+  ↓
+  Verification code:
+  ↓
+  TOTP accepted
+  ↓
+  Login successful
+
+
+Steps adicionales:
+
+En la terminal del bastion hacer lo siguiente:
+
+  nano ~/.ssh/authorized_keys
+
+Cambiar:
+
+  ssh-ed25519 AAAA...
+  ↓
+  from="10.0.40.11" ssh-ed25519 AAAA...
+
+Esto hace que asi alguien se haya robado la credencial publica, solo se pueda conectar desde 10.0.40.11
+
+Por cierto, nunca se deberia tener la llave PRIVADA en el bastion. En el bastion unicamente debe estar la PUBLICA.
