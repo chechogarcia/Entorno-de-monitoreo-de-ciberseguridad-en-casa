@@ -429,7 +429,7 @@ _____________________________________________________________________________
 
 Para mejoras futuras, el AdminVM deberia ir en otra subred para que asi el trafico sí sea evaluado por el firewall.
 
-
+Y tambien, incluir una vpn para la conexion segura.
 
 For a realistic bastion architecture, many organizations place:
 
