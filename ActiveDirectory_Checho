@@ -1,1 +1,54 @@
-Para instalar un Directorio activo/Active directory (AD) lo haremos con un Windows Server que ira en la subred de servidores 10.0.20.0/24
+Para instalar un Directorio activo/Active directory (AD) lo haremos con un Windows Server 2022 que ira en la subred de servidores 10.0.20.0/24
+
+Descargamos la imagen iso del sitio oficial de windows.
+
+Creamos una maquina virtual sin el archivo iso (como si no tuviera sistema operativo), esto para que no se instale con el easy install de VMWare pues a veces presenta problemas con esa version de Windows
+
+Le proporcionamos 8 GB de ram, 80 GB de disco, cambiamos el disco de arranque por la imagen iso que descargamos y conectamos la interfaz de red a la subred de servidores.
+
+Despues iniciamos la maquina virtual y hacemos la instalacion normal con la version "Windows Server 2022 Standard (Desktop Experience)". Esto para que no sea solo la consola y tengamos el escritorio normal.
+
+Mas adelante pregunta por el tipo de instalacion y toca usar "Custom: Install Microsoft Server Operating System only (advanced)". Esto porque para un directorio activo necesitamos un sistema operativo limpio y nuevo.
+
+La otra opcion es para cuando ya la maquina tiene un Windows y lo vamos a actualizar.
+
+---------------------------------------------------------------------------------------
+
+Cuando se termine de instalar todo e inicie el sistema, lo primero es cambiar el nombre de la maquina
+
+Oara esto vamos a Search > My PC > Properties > Rename this PC y le damos el nombre ADDC01
+
+Esto hará que la maquina virtual se necesite reiniciar, entonces la reiniciamos.
+
+---------------------------------------------------------------------------------------
+
+Ahora le cambiamos la ip por una estatica 10.0.20.10 y configuramos el gateway a 10.0.20.1 y el dns a 8.8.8.8 (temporalmente)
+
+Para poder instalar las herramientas de AD y DNS toca crear reglas que permitan HTTPS (443), HTTP (80) y DNS (53) desde la red de servidores (OPT1) hacia el internet
+
+Para poder probar la conectividad usando ping tambien hay que incluir una regla que permita el ping desde la red de servidores hacia afuera.
+
+
+Despues de esto, en la maquina ADDC01 hacemos los siguietes pings desde la linea de comando:
+
+  ping 10.0.20.1
+  ping 8.8.8.8
+  nslookup microsoft.com
+
+Si estos pings funcionan entonces debemos realizar los siguientes pasos:
+  1. Instalar actualizaciones
+  2. Instalar AD DS y DNS
+  3. Promover el servidor a un Controlador de Dominio
+
+
+1. Instalar actualizaciones
+
+Abrimos Settings → Windows Update y checkeamos por actualizaciones "Check for updates"
+
+Repetimos eso hasta que aparezca "You're up to date"
+
+Lo mas seguro es que haya que reiniciar varias veces la maquina virtual
+
+
+
+2. Instalar AD DS y DNS
