@@ -13,6 +13,53 @@ Eso reiniciara la maquina y toca volver a configurarla para trabajo y aparecera 
 
 Creamos una cuenta con el usuario y contraseña que qeuramos y se completa la instalación.
 
+Cuando termine de instalar entramos a configuracion y vemos si hay actualizaciones pendientes.
+
 -----------------------------------------------------------------------------------------------
 
-Para 
+Para terminar de configurar el host debemos seguir los siguientes pasos:
+
+1. Configurar la red
+2. Verificar conectividad
+3. Renombrar la Workstation
+4. Entrar al dominio
+5. Iniciar sesión en el dominio
+6. Mover el objeto del Computador en el dominio
+7. Verificar la funcionalidad de AD
+8. Crear un Snapshot
+
+
+-----------------------------------------------------------------------------------------------
+
+1. Configurar la red
+
+Entramos al panel de control, buscamos "Network and Sharing Center" y damos en "Change adapter settings"
+
+Doble click en ipv4 y configuramos el host con la siguiente informacion:
+  IP Address: 10.0.10.110
+  Subnet Mask: 255.255.255.0
+  Gateway: 10.0.10.1
+  DNS Server: 10.0.20.10
+
+Importante que el DNS sea 10.0.20.10 pues AD depende de DNS
+
+
+2. Verificar conectividad
+
+Desde PwerShell probar los siguientes comandos:
+  ping 10.0.10.1 (conectividad con pfsense)
+  ping 10.0.20.10 (conectividad con ADDC01)
+  nslookup dc01.corp.lab
+  nslookup corp.lab
+
+
+Para nslookup dc01.corp.lab deberia mostrar:
+  Name: dc01.corp.lab
+  Address: 10.0.20.10
+
+
+Para nslookup corp.lab deberia resolver
+
+
+
+3. Renombrar la Workstation
