@@ -47,10 +47,10 @@ Importante que el DNS sea 10.0.20.10 pues AD depende de DNS
 2. Verificar conectividad
 
 Desde PwerShell probar los siguientes comandos:
-  '''ping 10.0.10.1 (conectividad con pfsense)
+  ping 10.0.10.1 (conectividad con pfsense)
   ping 10.0.20.10 (conectividad con ADDC01)
   nslookup dc01.corp.lab
-  nslookup corp.lab'''
+  nslookup corp.lab
 
 
 Para nslookup dc01.corp.lab deberia mostrar:
@@ -60,6 +60,54 @@ Para nslookup dc01.corp.lab deberia mostrar:
 
 Para nslookup corp.lab deberia resolver
 
+(Nota: En este momento no hay ninguna regla ademas de las qe son por defecto en la LAN del pfsense, por lo que el trafico hacia cualquier lado esta permitido, entonces estos pings deberian servir sin problema)
+
 
 
 3. Renombrar la Workstation
+
+En PowerShell como Administrador correr el comando
+
+  Rename-Computer -NewName "WIN11-01" -Restart
+
+
+4. Entrar al dominio
+
+Entrar a Settings > System > About > Related Links > Domain or Workgroup > Change
+
+Elegimos "Domain" y escribimos "corp.lab"
+
+Damos ok y nos pedirá que ingresemos una cuenta que tenga acceso a este dominio. Usamos la cuenta de administrador que creamos anteriormente en el Directorio activo (sergio.admin)
+
+Debera aparecer un aviso con "Welcome to the corp.lab domain" y toca reiniciar.
+
+
+
+5. Iniciar sesión en el dominio
+
+Despues de reiniciar, en vez de iniciar en el usuario local, damos en "Other User" e ingresamos la cuenta de usuario del directorio activo (sergio o sergio@corp.lab)
+
+Por la politica de contraseña que le pusimos al crear el usuario, va a pedir que se cambie la contraseña, lo cambiamos y damos enter. Esto nos dara la bienvenida como si acabaramos de instalar windows.
+
+
+
+6. Mover el objeto del Computador en el dominio
+
+Nos metemos al directorio activo y en "Server Manager" vamos a Tools > Active Directory Users and Computers
+
+Aqui buscamos el computador WIN11-01 (Seguramente esta en la carpeta "Computers") y lo movemos a la carpeta Corp-Workstations. Aparece un aviso, le damos Yes y verificamos que se haya movido correctamente a la carpeta de Workstations
+
+
+
+7. Verificar la funcionalidad de AD
+
+En la maquina de windows en en cmd o powershell corremos "whoami" y deberia aparecer "corp\sergio"
+
+Despues escribir "echo %logonserver%" y deberia dar "\\ADDC01"
+
+Despues "gpupdate /force" y deberia completarse satisfactoriamente.
+
+
+
+8. Crear un Snapshot
+Tomar un snapshot de la maquina Windows y llamarlo "WIN11-01 - Joined to Domain"
