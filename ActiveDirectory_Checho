@@ -52,3 +52,165 @@ Lo mas seguro es que haya que reiniciar varias veces la maquina virtual
 
 
 2. Instalar AD DS y DNS
+
+Abrimos "Server Manager" y arriba a la derecha aparece "Manage". Opriomimos ahi y damos en "Add Roles and Features"
+
+Esto abre una pestaña nueva. Damos "Next" y despues escogemos la opcion "Role-based or feature-based installation" y "Next".
+
+Seleccionamos nuestro servidor ADDC01 y damos "Next"
+
+En la siguiente ventana nos pide que seleccionemos los servicios y roles que queremos instalar en el servidor. Aqui escogemos "Active Directory Domain Services" y "DNS Server". (Nota: Cada que se seleccione un rol/servicio toca dar en el Boton "Add features" en la pestaña que aparece)
+
+
+Despues de seleccionar los 2 roles/servicios seguimops dando "Next" hasta que aparezca la pestaña para confirmar la seleccion para la instalación.
+
+En esta pestaña damos "Install" y esperamos a que termine el proceso y podemos cerrar la pestaña.
+
+
+
+3. Promover el servidor a Controlador de Dominio
+
+Despues de la instalación aparece un icono de notificacion en la Bandera del Server Manager. Damos click en esa bandera y se despliega una pequeña pestaña donde aparece la opcion "Promote this server to a domain controller".
+
+Damos click en eso y nos lleva a otra pestaña donde vamos a crear el nuevo bosque para nuestro nuevo dominio.
+
+Escogemos la opcion "Add a new forest" y en el "Root domain name" ponemos "corp.lab" y damos en "Next"
+
+Mantenemos estas opciones seleccionadas:
+  DNS Server
+  Global Catalog
+
+Seteamos una buena clave DMRS
+
+Dejamos todo el resto en default:
+  DNS Options
+  NetBIOS Name
+  Paths
+  Prerequisites Check  
+
+En la pestaña de paths aparece donde e guardar el archivo de la base de datos del directorio activo (NTDS.dit) 
+(Nota: Los atacantes les gusta atacar los directorios activos, no solo porque tiene acceso a todo, sino que tambien por este archivo pues tiene lo lo relacionado con directorio activo, incluyendo hashes de contraseñas)
+
+Si se ve algun tipo de actividad en ese archivo es bastante posible que todo el dominio este comprometido
+
+Despues dar Next en todo, nos aparece la pestaña "Installation" donde damos click en "Install". Despues de la instalacion el servidor se reinicia automaticamente.
+
+
+
+4. Verificamos que AD este funcionando
+
+En un principio, deberia aparecer CORP\Administrator asi haciendo referencia a que estamos en el dominio CORP
+
+Despues de iniciar sesion ahi, en powershell usamos el comando:
+  Get-ADDomain
+
+Si da información sobre "corp.lab" entonces significa que el AD esta corriendo.
+
+
+
+
+5. Arreglar DNS
+
+Debemos cambiar el dns preferido a 10.0.20.10 en vez de 8.8.8.8 (Si es que no se cambio automaticamente)
+
+Tambien esta la opcion de que haya cambiado a 127.0.0.1 (loopback), para este laboratorio mejor cambiarla a 10.0.20.10 para hacer troubleshooting de DNS, AD replication, and errores de cliente, pues cambiarlo facilita saber que servidor se esta usando exactamente.
+
+Abrimos PowerShell como administrador y verificamos que todo haya quedado bien configurado:
+
+  ipconfig /all
+
+El dns deberia estar listado como 10.0.20.10
+
+
+Despues corremos:
+  nslookup addc01.corp.lab
+
+Deberia mostrar
+  
+  Name:    addc01.corp.lab
+  Address: 10.0.20.10
+
+Esto significa que 
+  DNS esta instalado
+  La zona corp.lab existe
+  El Controlador de Dominio registro su registro de DNS
+  El DNS puede resolver el hostname del directorio activo
+
+Ahora corremos el comando
+  Get-Service DNS,NTDS
+
+Y deberia salir
+  Running DNS
+  Running NTDS
+
+
+Finalmente verificamos acceso a internet por pfsense
+
+  ping 10.0.20.1
+  ping 8.8.8.8
+  nslookup microsoft.com
+
+Si en todas devuelve respuestas e ip's esta bien configurado.
+
+Tomamos un snapshot de la maquina y lo nombreamos "DC01 - Fresh Domain Controller"
+
+
+Ahora el siguiente paso es crear Unidades Organizacionales antes de incluir workstations en el dominio
+
+------------------------------------------------------------------------------------
+
+Para crear las OU's (Organizational Units) nos vamos al Server Manager y buscamos Tools → Active Directory Users and Computers (Aqui es donde se pueden crear usuarios, grupos, etc.)
+
+En esa nueva pestaña nos paramos sobre corp.lab y creamos una OU llamada "Corp". Esta sera la Unidad Organizacional mas grande.
+
+Despues nos metemos a Corp y creamos las unidades organizacionales siguientes:
+
+Corp
+├── Users
+├── Workstations
+├── Servers
+├── Admins
+├── Service Accounts
+└── Groups
+
+No se usan las carpetas Default que ya hay (Users y Computers) porque estas no son OU's sino que son containers
+
+A los containers no se les pueden aplicar GPO's y son casi siempre legacy defaults
+
+En cambio as OU's:
+  Permiten Group Policy application.
+  Permiten la delegacion.
+  Es como las empresas organizan y usan AD
+
+Por ejemplo, mas adelante se pueden tener politicas como:
+  Workstations OU
+      ↓
+  Disable LLMNR
+  Enable Sysmon
+  Enable auditing
+
+o
+
+  Servers OU
+      ↓
+  Otras politicas de seguridad
+
+Ahora, antes de comenzar a meter maquinas en el dominio, creamos un usuario normal (sergio) y un usuario admin (sergio.admin)
+
+Para el usuario normal entramos en la OU de Users y creamos un nuevo usuario con nombre y apellido
+
+Para el usuario admin entramod en la OU de Admins y creamos un nuevo usuario con nombre y apellido. Adicionalmente, despues de crearlo, damos click derecho sobre el y le damos a "Add to a group". En el recuadro escribimos "Domain Admins" y seleccionamos lo que aparezca en "Check Names".
+
+Damos "Ok" y guardamos.
+--------------------------------------------------------------------------------------
+El siguiente paso es incluir una Workstation al directorio activo. Lo haremos con una Windows 11.
+
+Antes de hacerle hardening toca hacer estos pasos:
+
+1. Finish AD deployment
+2. Join a workstation to the domain
+3. Verify DNS
+4. Verify Group Policy
+5. Create administrative users/groups
+6. Deploy Wazuh
+7. Harden the Domain Controller
