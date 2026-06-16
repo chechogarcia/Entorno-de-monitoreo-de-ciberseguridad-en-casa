@@ -47,10 +47,10 @@ Importante que el DNS sea 10.0.20.10 pues AD depende de DNS
 2. Verificar conectividad
 
 Desde PwerShell probar los siguientes comandos:
-  ping 10.0.10.1 (conectividad con pfsense)
+  '''ping 10.0.10.1 (conectividad con pfsense)
   ping 10.0.20.10 (conectividad con ADDC01)
   nslookup dc01.corp.lab
-  nslookup corp.lab
+  nslookup corp.lab'''
 
 
 Para nslookup dc01.corp.lab deberia mostrar:
