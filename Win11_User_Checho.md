@@ -107,6 +107,8 @@ Despues escribir "echo %logonserver%" y deberia dar "\\ADDC01"
 
 Despues "gpupdate /force" y deberia completarse satisfactoriamente.
 
+Tambien podemos correr el comando "gpresult /r" que deberia mosdtrar que el computador esta recibiendo actualizaciones del dominio.
+
 
 
 8. Crear un Snapshot
