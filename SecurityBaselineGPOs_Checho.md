@@ -1,4 +1,4 @@
-<img width="1025" height="768" alt="image" src="https://github.com/user-attachments/assets/3fb158d8-ce19-4f21-b593-b1942316df96" />Una GPO Directiva de Grupo (Group Policy Object en inglés) es una herramienta de Windows Server que permite a los administradores de TI gestionar y configurar de forma centralizada los sistemas operativos, aplicaciones y permisos de seguridad para múltiples usuarios y equipos en una red.
+Una GPO Directiva de Grupo (Group Policy Object en inglés) es una herramienta de Windows Server que permite a los administradores de TI gestionar y configurar de forma centralizada los sistemas operativos, aplicaciones y permisos de seguridad para múltiples usuarios y equipos en una red.
 
 -----------------------------------------------------------------------
 WORKSTATIONS BASELINE
@@ -132,20 +132,12 @@ Pueden generar un volumen muy grande de logs y es mejor introducirlos despues
 -----------------------------------------------------------------------
 DC Baseline GPO
 -----------------------------------------------------------------------
-Para el controlador de dominio crearemos otra GPO Base
-
-Para esto debemos crear una nueva OU que sera la de los Controladores de Dominio
-
-Dentro del Server Manager vamos a Tools > Active Directory Users and Computers
-
-Aqui entramos a corp.lab > Corp y creamos la nueva OU "Domain Controllers"
-
-Cerramos y volvemos al Server Manager
+Para el controlador de dominio linkeamos la GPO a la OU que se crea por default en corp.lab
 
 
-Ahora entramos a Tools > Group Policy Management
+Entramos a Tools > Group Policy Management
 
-Navegamos a Forest > Domains > corp.lab > Corp > Domain Controllers
+Navegamos a Forest > Domains > corp.lab > Domain Controllers
 
 Damos click derecho sobre la carpeta Domain Controllers y damos en "Create a GPO in this domain, and Link it here" y la llamamos "DC Baseline"
 
