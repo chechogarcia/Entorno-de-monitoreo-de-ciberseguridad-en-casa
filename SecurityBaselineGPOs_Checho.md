@@ -179,3 +179,25 @@ Misma configuracion de la Workstation Baseline
 
 Vamos a Computer Configuration > Administrative Templates > System > Audit Process Creation y activamos "Include command line in process creation events"
 
+-----------------------------------------------------------------------
+
+Ahora toca aplicar las politicas.
+
+
+en el ADDC01 abrimos PowerShell como administrador
+
+corremos el comando:
+  gpupdate /force
+
+Deberia aparecer 
+  Computer Policy update has completed successfully.
+
+
+En el WIN11-01
+Abrimos powershell normal
+
+corremos el comando:
+  gpupdate /force
+
+Deberia aparecer 
+  Computer Policy update has completed successfully.
