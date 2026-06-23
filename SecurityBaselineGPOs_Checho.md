@@ -1,4 +1,4 @@
-Una GPO Directiva de Grupo (Group Policy Object en inglés) es una herramienta de Windows Server que permite a los administradores de TI gestionar y configurar de forma centralizada los sistemas operativos, aplicaciones y permisos de seguridad para múltiples usuarios y equipos en una red.
+<img width="1025" height="768" alt="image" src="https://github.com/user-attachments/assets/3fb158d8-ce19-4f21-b593-b1942316df96" />Una GPO Directiva de Grupo (Group Policy Object en inglés) es una herramienta de Windows Server que permite a los administradores de TI gestionar y configurar de forma centralizada los sistemas operativos, aplicaciones y permisos de seguridad para múltiples usuarios y equipos en una red.
 
 -----------------------------------------------------------------------
 WORKSTATIONS BASELINE
@@ -132,3 +132,58 @@ Pueden generar un volumen muy grande de logs y es mejor introducirlos despues
 -----------------------------------------------------------------------
 DC Baseline GPO
 -----------------------------------------------------------------------
+Para el controlador de dominio crearemos otra GPO Base
+
+Para esto debemos crear una nueva OU que sera la de los Controladores de Dominio
+
+Dentro del Server Manager vamos a Tools > Active Directory Users and Computers
+
+Aqui entramos a corp.lab > Corp y creamos la nueva OU "Domain Controllers"
+
+Cerramos y volvemos al Server Manager
+
+
+Ahora entramos a Tools > Group Policy Management
+
+Navegamos a Forest > Domains > corp.lab > Corp > Domain Controllers
+
+Damos click derecho sobre la carpeta Domain Controllers y damos en "Create a GPO in this domain, and Link it here" y la llamamos "DC Baseline"
+
+
+
+Click derecho sobre "DC Baseline" y damos en "Edit" para configurar las politicas:
+
+Las cosas que configuraremos seran:
+  1. Disable LLMNR
+  2. DC-Specific Auditing
+  3. PowerShell Logging
+  4. Process Command Line Logging
+
+
+-----------------------------------------------------------------------
+1. Disable LLMNR
+
+Misma configuracion de la Workstation Baseline
+
+-----------------------------------------------------------------------
+2. DC-Specific Auditing
+
+Vamos a Computer Configuration > Policies > Windows Settings > Security Settings > Advanced Audit Policy > Audit Policies
+
+Habilitamos las mismas politicas que la Workstation Baseline y configuramos estas nuevas
+
+- Directory Service Changes (DS Access)
+- Directory Service Access (DS Access)
+- User Account Management (Account Management)
+- Security Group Management (Account Management)
+
+-----------------------------------------------------------------------
+3. PowerShell Logging
+
+Misma configuracion de la Workstation Baseline
+
+-----------------------------------------------------------------------
+4. Process Command Line Logging
+
+Vamos a Computer Configuration > Administrative Templates > System > Audit Process Creation y activamos "Include command line in process creation events"
+
