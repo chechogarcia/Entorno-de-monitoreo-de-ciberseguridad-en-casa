@@ -201,3 +201,11 @@ corremos el comando:
 
 Deberia aparecer 
   Computer Policy update has completed successfully.
+
+
+-----------------------------------------------------------------------
+
+Para verificar que las politicas se aplicaron de forma correcta corremos el siguiente comando en ambas VMs:
+
+gpresult /scope computer /r
+
