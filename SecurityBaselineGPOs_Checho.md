@@ -209,3 +209,47 @@ Para verificar que las politicas se aplicaron de forma correcta corremos el sigu
 
 gpresult /scope computer /r
 
+En la Workstation deberia aparecer 
+COMPUTER SETTINGS
+Applied Group Policy Objects
+- Workstation Baseline
+- Default Domain Policy
+
+En el Domain Controller deberia aparecer
+Applied Group Policy Objects
+----------------------------
+DC Baseline
+Default Domain Controllers Policy
+
+
+
+----------------------------------------------------------------------------
+
+Unos comando adicionales para verificar que las politicas se estan aplicando correctamente son:
+
+En powershell:
+
+Check LLMNR
+  Get-ItemProperty "HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\DNSClient"
+
+Buscar en el output: EnableMulticast = 0
+Esto significa que LLMNR esta desactivado
+
+
+Check PowerShell Logging
+  Get-Process
+Y despues correr
+  Get-WinEvent -LogName "Microsoft-Windows-PowerShell/Operational" -MaxEvents 20
+
+Si hay eventos, entonces el Script Block Logging / Module Logging esta funcionando
+
+
+
+Check Process Creation Auditing
+En cmd
+  notepad.exe
+
+Despues, en powershell:
+  Get-WinEvent -FilterHashtable @{LogName='Security';Id=4688} -MaxEvents 10
+
+Si se ve el event ID 4688, process auditing esta funcionando.
