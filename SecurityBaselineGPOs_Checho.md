@@ -258,13 +258,13 @@ Si se ve el event ID 4688, process auditing esta funcionando.
 
 Lo siguiente que haremos sera
 
-Snapshot everything.
-Deploy Sysmon.
-Build Wazuh.
-Install Wazuh agents.
-Verify telemetry.
-Harden DC further.
-Build attack VM.
-Generate detections.
-Add Linux AD integration.
-Add AD CS.
+- Snapshot pfSense, ADDC01, WIN11-01, Bastion01
+- Deploy Sysmon.
+- Build Wazuh.
+- Install Wazuh agents.
+- Verify telemetry.
+- Harden DC further.
+- Build attack VM.
+- Generate detections.
+- Add Linux AD integration.
+- Add AD CS.
