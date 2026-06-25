@@ -258,7 +258,7 @@ Si se ve el event ID 4688, process auditing esta funcionando.
 
 Lo siguiente que haremos sera
 
-- Snapshot pfSense, ADDC01, WIN11-01, Bastion01
+- Snapshot pfSense, ADDC01, WIN11-01, Bastion01 (VM__Pre_Sysmon_Wazuh)
 - Deploy Sysmon.
 - Build Wazuh.
 - Install Wazuh agents.
