@@ -253,3 +253,18 @@ Despues, en powershell:
   Get-WinEvent -FilterHashtable @{LogName='Security';Id=4688} -MaxEvents 10
 
 Si se ve el event ID 4688, process auditing esta funcionando.
+
+----------------------------------------------------------------------------
+
+Lo siguiente que haremos sera
+
+Snapshot everything.
+Deploy Sysmon.
+Build Wazuh.
+Install Wazuh agents.
+Verify telemetry.
+Harden DC further.
+Build attack VM.
+Generate detections.
+Add Linux AD integration.
+Add AD CS.
