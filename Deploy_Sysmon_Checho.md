@@ -63,16 +63,63 @@ Event ID	Description	Why it matters
 12–14	Registry Events	Persistence mechanisms
 22	DNS Query	Domain lookups by processes
 
-Step 10: Repeat on ADDC01
 
-Once you've verified everything on WIN11-01:
+------------------------------------------------------------------------------------------------------------------
+Siguiente paso, Desplegar por medio de Group Policy
 
-Copy the same C:\Sysmon folder to ADDC01.
-Run the same installation command.
-Verify the service and event log.
+La idea es simular el despliegue automatico de las empresas para sysmon en nuevos equipos que entren al dominio
 
-Keeping both systems on the same configuration makes future analysis much easier.
+El deployment funcionara asi
 
-Next step: Deploy through Group Policy
+ADDC01
+│
+├── SYSVOL
+│   └── Sysmon
+│       ├── Sysmon64.exe
+│       ├── sysmonconfig.xml
+│       └── install_sysmon.cmd
+│
+└── GPO
+      │
+      └── Startup Script
+              │
+              ▼
+Every domain computer
 
-After you've confirmed Sysmon works on both machines, we can automate deployment so that every future workstation or server that joins the domain installs Sysmon automatically at startup. This is much closer to how Sysmon is managed in enterprise environments and will make your lab easier to expand.
+
+Los pasos a seguir son:
+  1. Crear una carpeta compartida en SYSVOL
+  2. Crear un script de instalacion
+  3. Editar la GPO Workstation Baseline
+  4. Seleccionar el script
+  5. Actualizar Group Policy
+  6. Verificar instalacion
+  7. Testear con nueva workstation
+
+
+------------------------------------------------------------------------------------------------------------------
+1. Crear una carpeta compartida en SYSVOL
+
+En ADDC01 vamos a C:\Windows\SYSVOL\sysvol\corp.lab\scripts y creamos una carpeta "Sysmon"
+
+Aqui copiamos los archivos Sysmon64.exe, sysmonconfig-export.xml
+
+Usamos la carpeta SYSVOL porque esta es visible y legible para todos los equipos dentro del dominio por default
+
+------------------------------------------------------------------------------------------------------------------
+2. Crear un script de instalacion
+
+Abrimos notepad y escribimos el script
+
+'''
+@echo off
+
+if exist "C:\Windows\Sysmon64.exe" (
+    echo Sysmon already installed.
+    exit /b
+)
+
+copy "%~dp0Sysmon64.exe" "C:\Windows\Sysmon64.exe"
+
+"C:\Windows\Sysmon64.exe" -accepteula -i "%~dp0sysmonconfig.xml"
+'''
