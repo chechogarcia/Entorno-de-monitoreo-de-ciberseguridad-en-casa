@@ -111,7 +111,7 @@ Usamos la carpeta SYSVOL porque esta es visible y legible para todos los equipos
 
 Abrimos notepad y escribimos el script
 
-'''
+´´´
 @echo off
 
 if exist "C:\Windows\Sysmon64.exe" (
@@ -122,4 +122,4 @@ if exist "C:\Windows\Sysmon64.exe" (
 copy "%~dp0Sysmon64.exe" "C:\Windows\Sysmon64.exe"
 
 "C:\Windows\Sysmon64.exe" -accepteula -i "%~dp0sysmonconfig.xml"
-'''
+´´´
