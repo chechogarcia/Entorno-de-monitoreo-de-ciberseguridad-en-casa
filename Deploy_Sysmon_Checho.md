@@ -1,4 +1,4 @@
-El siguiente paso es desplegar Sysmon para tener mejor telemetria y poder incluirla en Wazuh cuando lo montemos
+<img width="1042" height="336" alt="image" src="https://github.com/user-attachments/assets/bafbd371-3f9e-47f7-98f8-234aab5587a2" />El siguiente paso es desplegar Sysmon para tener mejor telemetria y poder incluirla en Wazuh cuando lo montemos
 
 Para esto abrimos ADDC01 y descargamos Sysmon y el archivo de configuracion de nuestra preferencia
 
@@ -121,5 +121,116 @@ if exist "C:\Windows\Sysmon64.exe" (
 
 copy "%~dp0Sysmon64.exe" "C:\Windows\Sysmon64.exe"
 
-"C:\Windows\Sysmon64.exe" -accepteula -i "%~dp0sysmonconfig.xml"
+"C:\Windows\Sysmon64.exe" -accepteula -i "%~dp0sysmonconfig-export.xml"
 ```
+y lo guardamos como install_sysmon.cmd
+
+Importante que la extension sea .cmd
+
+Este script revisa si Sysmon.exe ya está instalado, y en caso de que no lo este, lo instala con la configuracion de la carpeta compartida.
+
+Se puede usar un script parecido para actualizar la configuracion en caso de que ya este instalado.
+
+```
+@echo off
+
+if exist "C:\Windows\Sysmon64.exe" (
+    "C:\Windows\Sysmon64.exe" -c "%~dp0sysmonconfig-export.xml"
+) else (
+    copy "%~dp0Sysmon64.exe" "C:\Windows\Sysmon64.exe" /Y
+    "C:\Windows\Sysmon64.exe" -accepteula -i "%~dp0sysmonconfig-export.xml"
+)
+```
+
+O asi
+
+```
+@echo off
+setlocal
+
+:: Definir rutas para mantener el código limpio
+set "ORIGEN_EXE=%~dp0Sysmon64.exe"
+set "ORIGEN_XML=%~dp0sysmonconfig-export.xml"
+set "DESTINO_EXE=C:\Windows\Sysmon64.exe"
+
+:: 1. Comprobar si Sysmon ya existe en el sistema
+if exist "%DESTINO_EXE%" (
+    echo [INFO] Sysmon detectado. Actualizando ejecutable y configuracion...
+    copy "%ORIGEN_EXE%" "%DESTINO_EXE%" /Y
+    "%DESTINO_EXE%" -c "%ORIGEN_XML%"
+) else (
+    echo [INFO] Sysmon no detectado. Iniciando instalacion limpia...
+    copy "%ORIGEN_EXE%" "%DESTINO_EXE%" /Y
+    "%DESTINO_EXE%" -accepteula -i "%ORIGEN_XML%"
+)
+
+endlocal
+pause
+
+```
+Este codigo mejora en estos aspectos:
+  1. Uso de variables: Centraliza las rutas al inicio (ORIGEN_EXE, DESTINO_EXE, etc.) para que el código sea más corto, limpio y fácil de modificar en el futuro.
+  2. Mensajes en pantalla (echo): Agrega textos informativos para que sepas exactamente qué camino tomó el script al ejecutarse.
+  3. Comandos de control: setlocal y endlocal aseguran que las variables creadas no afecten a otras ventanas de CMD de tu sistema. pause evita que la ventana se cierre de golpe al terminar para que puedas ver el resultado.
+
+------------------------------------------------------------------------------------------------------------------
+3. Editar la GPO Workstation Baseline
+
+En el Group Policy Management buscamos la Workstation Baseline que creamos anteriormente.
+
+La editamos y vamos a Computer Configuration > Policies > Windows Settings > Scripts (Startup/Shutdown) > Startup
+
+Doble click y damos en "Show Files"
+
+En esta ventana se abre la carpeta de scripts de la GPO. Aqui pegamos el script que acabamos de crear
+
+Despues de pegar el archivo, cerramos la ventana y damos click en "Add"
+
+------------------------------------------------------------------------------------------------------------------
+4. Seleccionar el script
+
+Damos en "Browse" y nos llevara a la carpeta de scripts donde pegamos el script, aqui seleccionamos nuestro scipt y aparecera en el script name algo asi 
+
+```
+\\corp.lab\SYSVOL\corp.lab\scripts\Sysmon\install_sysmon.cmd
+```
+------------------------------------------------------------------------------------------------------------------
+5. Actualizar Group Policy
+
+En el equipo WIN11-01 corremos los siguientes comandos
+
+```
+gpupdate /force
+shutdown /r /t 0
+```
+
+Esto reincia el computador despues de actualizar las politicas
+
+------------------------------------------------------------------------------------------------------------------
+6. Verificar instalacion
+
+Despues de reinciar corremos los comandos en powershell
+
+```
+Get-Service Sysmon64
+```
+Y deberia mostrar:
+```
+Status : Running
+```
+
+Y el comando:
+```
+Get-WinEvent -LogName "Microsoft-Windows-Sysmon/Operational" -MaxEvents 10
+```
+Que deberia mostrar eventos
+
+------------------------------------------------------------------------------------------------------------------
+7. Testear con nueva workstation
+
+Finalmente montamos otra workstation y
+  1. La unimos al dominio
+  2. Movemos la workstation a la OU de Workstations
+  3. Reiniciamos la maquina
+
+The startup script should automatically install Sysmon without you logging on or manually copying files.
