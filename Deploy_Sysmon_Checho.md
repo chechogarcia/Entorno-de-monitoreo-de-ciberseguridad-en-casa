@@ -1,5 +1,3 @@
-<img width="1042" height="336" alt="image" src="https://github.com/user-attachments/assets/bafbd371-3f9e-47f7-98f8-234aab5587a2" />El siguiente paso es desplegar Sysmon para tener mejor telemetria y poder incluirla en Wazuh cuando lo montemos
-
 Para esto abrimos ADDC01 y descargamos Sysmon y el archivo de configuracion de nuestra preferencia
 
 En mi caso usaré el archivo SwiftOnSecurity Sysmon Config
