@@ -230,5 +230,17 @@ Finalmente montamos otra workstation y
   1. La unimos al dominio
   2. Movemos la workstation a la OU de Workstations
   3. Reiniciamos la maquina
+  4. Verificamos la instalacion (como en el punto anterior)
 
 The startup script should automatically install Sysmon without you logging on or manually copying files.
+
+------------------------------------------------------------------------------------------------------------------
+Siguientes pasos:
+  - Build Wazuh.
+  - Install Wazuh agents.
+  - Verify telemetry.
+  - Harden DC further.
+  - Build attack VM.
+  - Generate detections.
+  - Add Linux AD integration.
+  - Add AD CS.
