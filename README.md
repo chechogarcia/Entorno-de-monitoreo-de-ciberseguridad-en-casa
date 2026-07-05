@@ -300,3 +300,4 @@ pfSense
 └── VPN (10.0.60.0/24)
        └── Remote administrators connecting through the Bastion
 ```
+This architecture follows the principle of separation of duties: users, production services, management, security operations, internet-facing services, and remote access are all isolated. It's a design that will scale well as you add technologies like AD CS, Security Onion, or additional domain controllers, and it provides a strong foundation for practicing both defensive operations and controlled attack scenarios.
