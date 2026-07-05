@@ -193,3 +193,110 @@ Ubuntu Agent
      Wazuh
 ```
 Notice that agents initiate the connection to Wazuh. Wazuh generally does not need to initiate sessions back to endpoints.
+
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+# pfSense Philosophy
+
+Default policy:
+```
+Deny Everything
+```
+Only explicitly allow:
+
+## Users
+- DNS
+- Kerberos
+- LDAP
+- SMB (if needed)
+- HTTP/HTTPS to Internet
+- Wazuh Agent → Wazuh
+
+## Servers
+Allow:
+- Domain replication (if you later add another DC)
+- DNS
+- Required application traffic
+- Wazuh Agent
+
+## Management
+Allow:
+- SSH
+- RDP
+- WinRM
+- HTTPS
+- pfSense management
+- Wazuh Dashboard
+
+## Security
+
+Allow:
+- Receive Wazuh agents
+- Receive syslog (if configured)
+- Internet access for updates
+- Admin access from the Management network
+
+VPN
+Allow:
+- VPN → Management
+- VPN → Bastion
+- VPN → Wazuh Dashboard (optional)
+
+Do not allow VPN clients unrestricted access to the Users network.
+
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+# Future Expansion
+
+As your lab grows, consider adding:
+
+## Servers
+- PKI / Active Directory Certificate Services (AD CS)
+- Exchange (or an email server)
+- Linux web application
+- SIEM test server
+
+## Security
+- Suricata sensor
+- Zeek sensor
+- Security Onion
+- YARA scanning
+- Sigma rule testing
+- MITRE ATT&CK Navigator
+- OSQuery Fleet
+
+## Management
+- Ansible
+- Windows Admin Center
+- Patch management
+- Automation server
+
+
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+# Final Recommendation
+
+I think this design gives you an excellent balance between realism and maintainability:
+```
+Internet
+    │
+pfSense
+    │
+├── Users (10.0.10.0/24)
+│      └── Endpoints and attack simulations
+│
+├── Servers (10.0.20.0/24)
+│      └── AD, DNS, file servers, applications
+│
+├── DMZ (10.0.30.0/24)
+│      └── Public-facing services
+│
+├── Management (10.0.40.0/24)
+│      └── Bastion, Admin VM, administrative tooling
+│
+├── Security (10.0.50.0/24)
+│      └── Wazuh, TheHive, Cortex, MISP, Velociraptor
+│
+└── VPN (10.0.60.0/24)
+       └── Remote administrators connecting through the Bastion
+```
