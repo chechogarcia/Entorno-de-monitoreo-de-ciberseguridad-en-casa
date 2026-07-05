@@ -74,3 +74,73 @@ Mail Relay
 FTP/SFTP
 ```
 These systems should never have unrestricted access to internal networks.
+
+--------------------------------------------------------------------------
+# 4. Management Network (10.0.40.0/24)
+
+Administrative systems only.
+```
+Admin VM
+Bastion Host
+Future Ansible Server
+Future WSUS
+Future vCenter
+```
+Purpose:
+
+- SSH
+- RDP
+- GPO management
+- pfSense management
+- Hypervisor management
+
+No regular user should ever access this subnet.
+
+--------------------------------------------------------------------------
+# 5. Security Network (10.0.50.0/24)
+
+Your SOC.
+```
+Wazuh
+TheHive
+Cortex
+MISP
+Velociraptor
+REMnux
+Malware Sandbox
+```
+Purpose:
+
+Detection
+Monitoring
+DFIR
+Threat Intelligence
+Incident Response
+
+This subnet should only be reachable by administrators.
+
+--------------------------------------------------------------------------
+# 6. VPN Network (10.0.60.0/24)
+
+Remote administrators.
+```
+OpenVPN Clients
+WireGuard Clients
+Future Remote Laptop
+```
+These users should not land directly inside Users or Servers.
+
+Instead:
+```
+VPN Client
+      │
+      ▼
+Management Network
+      │
+      ▼
+Bastion
+      │
+      ▼
+Servers
+```
+This models a secure remote administration workflow.
