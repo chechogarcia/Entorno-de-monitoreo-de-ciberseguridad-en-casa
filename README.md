@@ -144,3 +144,52 @@ Bastion
 Servers
 ```
 This models a secure remote administration workflow.
+
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+# Traffic Flow
+## User workstation
+```
+WIN11
+      │
+      ├──── DNS ─────────► ADDC01
+      ├──── Kerberos ────► ADDC01
+      ├──── LDAP ────────► ADDC01
+      ├──── SMB ─────────► File Server
+      └──── Wazuh Agent ─► Wazuh
+```
+## Administrator
+```
+Admin VM
+      │
+      ├──── SSH ─────► Bastion
+      ├──── HTTPS ───► Wazuh
+      ├──── RDP ─────► Servers
+      ├──── RSAT ────► AD
+      └──── HTTPS ───► pfSense
+```
+
+## Bastion
+```
+Bastion
+      │
+      ├──── SSH ─────► Linux Servers
+      ├──── RDP ─────► Windows Servers
+      ├──── WinRM ───► Windows
+      └──── HTTPS ───► Wazuh
+```
+
+## Wazuh
+```
+WIN11 Agent
+        │
+ADDC01 Agent
+        │
+Bastion Agent
+        │
+Ubuntu Agent
+        │
+────────▼────────
+     Wazuh
+```
+Notice that agents initiate the connection to Wazuh. Wazuh generally does not need to initiate sessions back to endpoints.
