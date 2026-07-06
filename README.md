@@ -63,7 +63,7 @@ Future GitLab
 These are the production assets.
 
 --------------------------------------------------------------------------
-# 3. DMZ (10.0.30.0/24)
+# 3. DMZ (10.0.30.0/27)
 
 Anything exposed to external users belongs here.
 ```
@@ -76,7 +76,7 @@ FTP/SFTP
 These systems should never have unrestricted access to internal networks.
 
 --------------------------------------------------------------------------
-# 4. Management Network (10.0.40.0/24)
+# 4. Management Network (10.0.40.0/28)
 
 Administrative systems only.
 ```
@@ -97,7 +97,7 @@ Purpose:
 No regular user should ever access this subnet.
 
 --------------------------------------------------------------------------
-# 5. Security Network (10.0.50.0/24)
+# 5. Security Network (10.0.50.0/27)
 
 Your SOC.
 ```
