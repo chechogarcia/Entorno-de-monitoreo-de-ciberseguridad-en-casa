@@ -60,3 +60,13 @@ network:
         addresses:
           - 10.0.20.10 
 ```
+Crucial YAML Rules: Do NOT use tabs; use exact spaces for indentation. Keep the dashes - formatted exactly as shown.
+
+
+Ahora, antes de instalar Wazuh le hacemos Hardening al servidor
+
+1. Crear un usuario administrativo
+2. Configurar ssh
+3. Instalar Fail2Ban
+4. Configurar UFW
+5. 
