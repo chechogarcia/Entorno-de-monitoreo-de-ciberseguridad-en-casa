@@ -43,3 +43,20 @@ Cuando lo hayamos localizado lo editamos con:
 sudo nano nombre_del_archivo.yaml
 ```
 
+Como vamos a establecer una ip estatica editamos el archivo de la siguiente manera
+```
+network:
+  version: 2
+  renderer: networkd
+  ethernets:
+    nombre_interfaz:
+      dhcp4: false
+      addresses:
+        - 10.0.50.10/27
+      routes:
+        - to: default
+          via: 10.0.50.1
+      nameservers:
+        addresses:
+          - 10.0.20.10 
+```
