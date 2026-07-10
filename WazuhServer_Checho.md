@@ -69,4 +69,79 @@ Ahora, antes de instalar Wazuh le hacemos Hardening al servidor
 2. Configurar ssh
 3. Instalar Fail2Ban
 4. Configurar UFW
-5. 
+
+-----------------------------------------------------------------------------
+## 1. Crear un usuario administrativo
+```
+sudo adduser sergioadmin
+sudo usermod -aG sudo sergioadmin
+```
+y lo probamos con
+```
+su - sergioadmin
+sudo whoami
+```
+y deberia aparecer
+```
+root
+```
+-----------------------------------------------------------------------------
+## 2. Configurar ssh
+
+Editamos el archivo de configuracion de ssh
+```
+sudo nano /etc/ssh/sshd_config
+```
+
+y ponemos las configuraciones asi:
+```
+PermitRootLogin no
+
+PasswordAuthentication no
+
+PubkeyAuthentication yes
+
+ChallengeResponseAuthentication no
+
+UsePAM yes
+
+MaxAuthTries 3
+
+LoginGraceTime 30
+
+X11Forwarding no
+```
+
+guardamos y reiniciamos el servicio
+
+```
+sudo systemctl restart ssh
+```
+
+-----------------------------------------------------------------------------
+## 3. Instalar Fail2Ban
+
+```
+sudo apt install fail2ban -y
+```
+y verificamos
+```
+sudo systemctl status fail2ban
+```
+
+-----------------------------------------------------------------------------
+4. Configurar UFW
+
+Aunque el firewall principal sea pfsense, otro firewall local da mas proteccion
+```
+sudo ufw default deny incoming
+sudo ufw default allow outgoing
+```
+Permitimos el trafico de la subred de manejo (Management)
+```
+sudo ufw allow from 10.0.40.0/28 to any port 22
+```
+
+
+
+
