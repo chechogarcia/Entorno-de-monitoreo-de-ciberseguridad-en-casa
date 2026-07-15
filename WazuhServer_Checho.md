@@ -152,17 +152,22 @@ Create firewall rules before installing Wazuh.
 Allow:
 
 Management → Security
+```
 Port	Purpose
 22	SSH
 443	Dashboard
+```
 
 Users → Security
+```
 Port	Purpose
 1514 TCP	Agent
 1515 TCP	Enrollment
+```
 
 Servers → Security
+```
 Port	Purpose
 1514 TCP	Agent
 1515 TCP	Enrollment
-
+```
