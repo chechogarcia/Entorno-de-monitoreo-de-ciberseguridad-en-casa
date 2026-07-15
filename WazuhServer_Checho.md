@@ -130,7 +130,7 @@ sudo systemctl status fail2ban
 ```
 
 -----------------------------------------------------------------------------
-4. Configurar UFW
+## 4. Configurar UFW
 
 Aunque el firewall principal sea pfsense, otro firewall local da mas proteccion
 ```
@@ -143,5 +143,26 @@ sudo ufw allow from 10.0.40.0/28 to any port 22
 ```
 
 
+-----------------------------------------------------------------------------
+-----------------------------------------------------------------------------
+# Preparar pfSense
 
+Create firewall rules before installing Wazuh.
+
+Allow:
+
+Management → Security
+Port	Purpose
+22	SSH
+443	Dashboard
+
+Users → Security
+Port	Purpose
+1514 TCP	Agent
+1515 TCP	Enrollment
+
+Servers → Security
+Port	Purpose
+1514 TCP	Agent
+1515 TCP	Enrollment
 
