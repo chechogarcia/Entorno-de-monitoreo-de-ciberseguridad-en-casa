@@ -101,7 +101,7 @@ PasswordAuthentication no
 
 PubkeyAuthentication yes
 
-ChallengeResponseAuthentication no
+kbdinteractiveauthentication no
 
 UsePAM yes
 
