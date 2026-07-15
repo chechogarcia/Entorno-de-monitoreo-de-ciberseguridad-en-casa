@@ -112,10 +112,12 @@ LoginGraceTime 30
 X11Forwarding no
 ```
 
-guardamos y reiniciamos el servicio
+guardamos reiniciamos el servicio y verificamos
 
 ```
 sudo systemctl restart ssh
+sudo systemctl enable ssh
+sudo systemctl status ssh
 ```
 
 -----------------------------------------------------------------------------
