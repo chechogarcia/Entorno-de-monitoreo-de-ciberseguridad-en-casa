@@ -150,6 +150,7 @@ sudo ufw allow from 10.0.40.0/28 to any port 22
 # Preparar pfSense
 
 Create firewall rules before installing Wazuh.
+Cada regla la crearemos en la interfaz origen
 
 Allow:
 
