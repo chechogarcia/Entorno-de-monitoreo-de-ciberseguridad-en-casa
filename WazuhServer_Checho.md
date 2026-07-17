@@ -260,4 +260,4 @@ Corremos el comando
 ```
 curl -sO https://packages.wazuh.com/4.14/wazuh-install.sh && sudo bash ./wazuh-install.sh -a
 ```
-
+Al correr este comando se instala wazuh automaticamente y da las credenciales de acceso al dashboard al cual podremos entrar desde la AdminVM
