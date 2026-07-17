@@ -149,7 +149,7 @@ Ahora, antes de instalar Wazuh le hacemos Hardening al servidor
 ## 1. Crear un usuario administrativo
 ```
 sudo adduser sergioadmin
-sudo usermod -aG sudo sergioadmin
+sudo usermod -aG sudo sergioadmin #este comando le da permisos de usar sudo al usuario sergio admin (la flag -a es para append la -G es para definir a que grupo)
 ```
 y lo probamos con
 ```
