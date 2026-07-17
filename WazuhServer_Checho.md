@@ -1,3 +1,78 @@
+Antes de iniciar la instalacion modificamos las reglas de pfsense en la interfaz de la sebred de seguridad:
+
+## Rule 1 – Allow Security subnet to the Internet
+
+Purpose:
+
+Ubuntu updates
+Wazuh package updates
+Threat intelligence downloads (future)
+```
+Action: Pass
+Interface: Security
+Protocol: IPv4 TCP/UDP
+Source: Security net
+Destination: any
+Port 443
+```
+```
+Action: Pass
+Interface: Security
+Protocol: IPv4 TCP/UDP
+Source: Security net
+Destination: any
+Port 80
+```
+
+## Rule 2 – Allow DNS to the Domain Controller
+
+Instead of allowing all outbound DNS, explicitly allow queries to your AD-integrated DNS server:
+```
+Action: Pass
+Source: Security net
+Destination: 10.0.20.10
+Ports:
+53 TCP
+53 UDP
+```
+
+## Rule 3 – Allow NTP
+
+Either use pfSense or your Domain Controller as the time source.
+```
+Source: Security net
+Destination:
+10.0.50.1
+UDP 123
+```
+
+## Rule 4 – Block RFC1918 (optional)
+
+Once the lab is complete, you can explicitly block unnecessary traffic from the Security subnet to internal networks.
+
+Example:
+
+Block
+```
+Security net
+Destination:
+Users net
+```
+Block
+```
+Security net
+Destination:
+Servers net
+```
+Block
+```
+Security net
+Destination:
+DMZ
+```
+-----------------------------------------------------------------------------
+# Instalacion de Wazuh
+
 Para el Servidor Wazuh usaremos Ubuntu Server 24.02LTS
 
 Lo configuramos con la siguiente información
@@ -178,4 +253,11 @@ Port	Purpose
 -----------------------------------------------------------------------------
 -----------------------------------------------------------------------------
 # Instalar Wazuh
+
+Seguimos la guia de instalacion: https://documentation.wazuh.com/current/quickstart.html
+
+Corremos el comando 
+```
+curl -sO https://packages.wazuh.com/4.14/wazuh-install.sh && sudo bash ./wazuh-install.sh -a
+```
 
