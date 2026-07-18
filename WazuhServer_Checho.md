@@ -256,6 +256,7 @@ Port	Purpose
 
 Seguimos la guia de instalacion: https://documentation.wazuh.com/current/installation-guide/index.html
 
-Aqui se muestra que se puede hacer la instalacion del indexer, el server y el dashboard de manera indekpendiente
+Aqui se muestra que se puede hacer la instalacion del indexer, el server y el dashboard de manera independiente
 
+Usamos el step-by-step installation.
 
