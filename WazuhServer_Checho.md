@@ -254,10 +254,8 @@ Port	Purpose
 -----------------------------------------------------------------------------
 # Instalar Wazuh
 
-Seguimos la guia de instalacion: https://documentation.wazuh.com/current/quickstart.html
+Seguimos la guia de instalacion: https://documentation.wazuh.com/current/installation-guide/index.html
 
-Corremos el comando 
-```
-curl -sO https://packages.wazuh.com/4.14/wazuh-install.sh && sudo bash ./wazuh-install.sh -a
-```
-Al correr este comando se instala wazuh automaticamente y da las credenciales de acceso al dashboard al cual podremos entrar desde la AdminVM
+Aqui se muestra que se puede hacer la instalacion del indexer, el server y el dashboard de manera indekpendiente
+
+
