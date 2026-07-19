@@ -234,6 +234,8 @@ Management → Security
 Port	Purpose
 22	SSH
 443	Dashboard
+1514 TCP	Agent (Bastion)
+1515 TCP	Enrollment (Bastion)
 ```
 
 Users → Security
@@ -259,4 +261,43 @@ Seguimos la guia de instalacion: https://documentation.wazuh.com/current/install
 Aqui se muestra que se puede hacer la instalacion del indexer, el server y el dashboard de manera independiente
 
 Usamos el step-by-step installation.
+
+Despues de instalar el servicio este da unas credenciales en la terminal. Es importante guardar estas credenciales porque se generan aleatoriamente y son las que se usan en el incio de sesion del dashboard y y verificarlo con 
+
+```
+sudo systemctl status wazuh-manager
+sudo systemctl status wazuh-indexer
+sudo systemctl status wazuh-dashboard
+```
+
+Ahora debemos configurar las reglas de ufw para permitir el trafico hacia el dashboard y de los agentes hacia wazuh
+
+Now allow:
+```
+sudo ufw allow from 10.0.40.0/28 to any port 443 proto tcp
+sudo ufw allow from 10.0.40.0/28 to any port 22 proto tcp
+sudo ufw allow from 10.0.10.0/24 to any port 1514 proto tcp
+sudo ufw allow from 10.0.20.0/24 to any port 1514 proto tcp
+sudo ufw allow from 10.0.40.0/28 to any port 1514 proto tcp
+sudo ufw allow from 10.0.10.0/24 to any port 1515 proto tcp
+sudo ufw allow from 10.0.20.0/24 to any port 1515 proto tcp
+sudo ufw allow from 10.0.40.0/28 to any port 1515 proto tcp
+```
+Enable:
+```
+sudo ufw enable
+```
+Verify:
+```
+sudo ufw status numbered
+```
+
+Despues probamos el dashboard desde la adminvm entrando a 10.0.50.10 en el navegador
+Aqui usamos las credenciales que se generaron
+
+-----------------------------------------------------------------------------
+# Instalar agentes
+
+Ahora que ya se tiene el dashboard funcionando, es hora de instalar lo agentes en las diferentes maquinas para que reporten a wazuh
+
 
