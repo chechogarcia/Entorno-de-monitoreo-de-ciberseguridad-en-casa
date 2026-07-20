@@ -300,4 +300,12 @@ Aqui usamos las credenciales que se generaron
 
 Ahora que ya se tiene el dashboard funcionando, es hora de instalar lo agentes en las diferentes maquinas para que reporten a wazuh
 
+Para hosts Windows: https://documentation.wazuh.com/current/installation-guide/wazuh-agent/wazuh-agent-package-windows.html
+Para hosts Linux: https://documentation.wazuh.com/current/installation-guide/wazuh-agent/wazuh-agent-package-linux.html
+
+Instalaremos los agentes en las maquinas:
+  - WIN11-01
+  - ADDC01
+  - Bastion01
+
 
