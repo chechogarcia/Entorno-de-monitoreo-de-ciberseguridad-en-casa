@@ -1,218 +1,281 @@
-https://www.youtube.com/watch?v=1XeDht_B-bA&t=13s
+# 3. Active Directory (Windows Server 2022)
 
-Para instalar un Directorio activo/Active directory (AD) lo haremos con un Windows Server 2022 que ira en la subred de servidores 10.0.20.0/24
+[⬅️ Anterior: Bastion Host](DebianBastionHost_Checho.md) · [Volver al README](README.md) · [Siguiente: Workstation Windows 11 ➡️](Win11_User_Checho.md)
 
-Descargamos la imagen iso del sitio oficial de windows.
+Instalación del controlador de dominio `ADDC01` con los roles AD DS y DNS, creación del bosque `corp.lab`, de las Unidades Organizativas (OU) y de los primeros usuarios.
 
-Creamos una maquina virtual sin el archivo iso (como si no tuviera sistema operativo), esto para que no se instale con el easy install de VMWare pues a veces presenta problemas con esa version de Windows
+> 🎥 Video guía de referencia: <https://www.youtube.com/watch?v=1XeDht_B-bA>
 
-Le proporcionamos 8 GB de ram, 80 GB de disco, cambiamos el disco de arranque por la imagen iso que descargamos y conectamos la interfaz de red a la subred de servidores.
+## Contenido
 
-Despues iniciamos la maquina virtual y hacemos la instalacion normal con la version "Windows Server 2022 Standard (Desktop Experience)". Esto para que no sea solo la consola y tengamos el escritorio normal.
+- [Especificaciones](#especificaciones)
+- [Instalación de Windows Server](#instalación-de-windows-server)
+- [Red y acceso a Internet](#red-y-acceso-a-internet)
+- [1. Instalar actualizaciones](#1-instalar-actualizaciones)
+- [2. Instalar AD DS y DNS](#2-instalar-ad-ds-y-dns)
+- [3. Promover el servidor a controlador de dominio](#3-promover-el-servidor-a-controlador-de-dominio)
+- [4. Verificar que AD funciona](#4-verificar-que-ad-funciona)
+- [5. Ajustar el DNS](#5-ajustar-el-dns)
+- [6. Crear las Unidades Organizativas](#6-crear-las-unidades-organizativas)
+- [7. Crear usuarios](#7-crear-usuarios)
 
-Mas adelante pregunta por el tipo de instalacion y toca usar "Custom: Install Microsoft Server Operating System only (advanced)". Esto porque para un directorio activo necesitamos un sistema operativo limpio y nuevo.
+## Especificaciones
 
-La otra opcion es para cuando ya la maquina tiene un Windows y lo vamos a actualizar.
+| Parámetro | Valor |
+| --------- | ----- |
+| Hostname | `ADDC01` |
+| Sistema operativo | Windows Server 2022 Standard (Desktop Experience) |
+| RAM / Disco | 8 GB / 80 GB |
+| Red | Servers – `10.0.20.0/24` (interfaz OPT1 en pfSense) |
+| IP / Gateway | `10.0.20.10` / `10.0.20.1` |
+| Dominio | `corp.lab` (NetBIOS: `CORP`) |
 
----------------------------------------------------------------------------------------
+---
 
-Cuando se termine de instalar todo e inicie el sistema, lo primero es cambiar el nombre de la maquina
+## Instalación de Windows Server
 
-Oara esto vamos a Search > My PC > Properties > Rename this PC y le damos el nombre ADDC01
+1. Descargar la ISO desde el sitio oficial de Microsoft.
+2. Crear la VM **sin** asignar la ISO en el asistente ("I will install the operating system later"), para evitar el *Easy Install* de VMware, que a veces da problemas con esta versión.
+3. Asignar 8 GB de RAM y 80 GB de disco, montar la ISO en la unidad de CD y conectar la red a la subred de Servers.
+4. Instalar la edición **Windows Server 2022 Standard (Desktop Experience)** para tener escritorio y no solo consola.
+5. En el tipo de instalación elegir **Custom: Install Microsoft Server Operating System only (advanced)**: un controlador de dominio debe partir de un sistema limpio (la otra opción es para actualizar un Windows existente).
 
-Esto hará que la maquina virtual se necesite reiniciar, entonces la reiniciamos.
+### Renombrar el equipo
 
----------------------------------------------------------------------------------------
+**Search → This PC → Properties → Rename this PC** → `ADDC01`. Reiniciar.
 
-Ahora le cambiamos la ip por una estatica 10.0.20.10 y configuramos el gateway a 10.0.20.1 y el dns a 8.8.8.8 (temporalmente)
+---
 
-Para poder instalar las herramientas de AD y DNS toca crear reglas que permitan HTTPS (443), HTTP (80) y DNS (53) desde la red de servidores (OPT1) hacia el internet
+## Red y acceso a Internet
 
-Para poder probar la conectividad usando ping tambien hay que incluir una regla que permita el ping desde la red de servidores hacia afuera.
+Configurar IP estática `10.0.20.10`, gateway `10.0.20.1` y, **temporalmente**, DNS `8.8.8.8`:
 
+![IP estática con DNS temporal](images/ad/01_ip_estatica_dns_temporal.png)
 
-Despues de esto, en la maquina ADDC01 hacemos los siguietes pings desde la linea de comando:
+En pfSense (**Firewall → Rules → OPT1**) crear reglas para que la subred de Servers pueda salir a Internet a instalar roles y actualizaciones:
 
-  ping 10.0.20.1
-  ping 8.8.8.8
-  nslookup microsoft.com
+| Acción | Protocolo | Origen | Destino | Puerto |
+| ------ | --------- | ------ | ------- | ------ |
+| Pass | ICMP | OPT1 net | any | — (para probar con `ping`) |
+| Pass | TCP | OPT1 net | any | 80 (HTTP) |
+| Pass | TCP | OPT1 net | any | 443 (HTTPS) |
+| Pass | TCP/UDP | OPT1 net | any | 53 (DNS) |
 
-Si estos pings funcionan entonces debemos realizar los siguientes pasos:
-  1. Instalar actualizaciones
-  2. Instalar AD DS y DNS
-  3. Promover el servidor a un Controlador de Dominio
+![Reglas de salida en OPT1](images/ad/02_reglas_opt1_salida.png)
 
+Probar desde `ADDC01`:
 
-1. Instalar actualizaciones
+```powershell
+ping 10.0.20.1
+ping 8.8.8.8
+nslookup microsoft.com
+```
 
-Abrimos Settings → Windows Update y checkeamos por actualizaciones "Check for updates"
+---
 
-Repetimos eso hasta que aparezca "You're up to date"
+## 1. Instalar actualizaciones
 
-Lo mas seguro es que haya que reiniciar varias veces la maquina virtual
+**Settings → Windows Update → Check for updates**. Repetir (y reiniciar las veces que haga falta) hasta que aparezca *You're up to date*.
 
+![Windows Update al día](images/ad/03_windows_update.png)
 
+---
 
-2. Instalar AD DS y DNS
+## 2. Instalar AD DS y DNS
 
-Abrimos "Server Manager" y arriba a la derecha aparece "Manage". Opriomimos ahi y damos en "Add Roles and Features"
+1. En **Server Manager → Manage → Add Roles and Features**, clic en *Next*.
+2. Elegir **Role-based or feature-based installation**.
 
-Esto abre una pestaña nueva. Damos "Next" y despues escogemos la opcion "Role-based or feature-based installation" y "Next".
+   ![Tipo de instalación](images/ad/04_tipo_instalacion.png)
 
-Seleccionamos nuestro servidor ADDC01 y damos "Next"
+3. Seleccionar el servidor `ADDC01`.
 
-En la siguiente ventana nos pide que seleccionemos los servicios y roles que queremos instalar en el servidor. Aqui escogemos "Active Directory Domain Services" y "DNS Server". (Nota: Cada que se seleccione un rol/servicio toca dar en el Boton "Add features" en la pestaña que aparece)
+   ![Servidor de destino](images/ad/05_servidor_destino.png)
 
+4. Marcar **Active Directory Domain Services** y **DNS Server**. Cada vez que se marca un rol aparece una ventana: clic en **Add Features**.
 
-Despues de seleccionar los 2 roles/servicios seguimops dando "Next" hasta que aparezca la pestaña para confirmar la seleccion para la instalación.
+   ![Rol AD DS](images/ad/06_rol_adds.png)
 
-En esta pestaña damos "Install" y esperamos a que termine el proceso y podemos cerrar la pestaña.
+   ![Features requeridas por AD DS](images/ad/07_features_adds.png)
 
+   ![Features requeridas por DNS](images/ad/08_features_dns.png)
 
+   ![Ambos roles seleccionados](images/ad/09_roles_seleccionados.png)
 
-3. Promover el servidor a Controlador de Dominio
+5. Continuar con *Next* hasta la confirmación y clic en **Install**.
 
-Despues de la instalación aparece un icono de notificacion en la Bandera del Server Manager. Damos click en esa bandera y se despliega una pequeña pestaña donde aparece la opcion "Promote this server to a domain controller".
+   ![Confirmación de la instalación](images/ad/10_confirmar_instalacion.png)
 
-Damos click en eso y nos lleva a otra pestaña donde vamos a crear el nuevo bosque para nuestro nuevo dominio.
+   ![Instalación completada](images/ad/11_instalacion_completa.png)
 
-Escogemos la opcion "Add a new forest" y en el "Root domain name" ponemos "corp.lab" y damos en "Next"
+---
 
-Mantenemos estas opciones seleccionadas:
-  DNS Server
-  Global Catalog
+## 3. Promover el servidor a controlador de dominio
 
-Seteamos una buena clave DMRS
+1. Clic en la bandera de notificaciones de Server Manager → **Promote this server to a domain controller**.
 
-Dejamos todo el resto en default:
-  DNS Options
-  NetBIOS Name
-  Paths
-  Prerequisites Check  
+   ![Promover a controlador de dominio](images/ad/12_promover_dc.png)
 
-En la pestaña de paths aparece donde e guardar el archivo de la base de datos del directorio activo (NTDS.dit) 
-(Nota: Los atacantes les gusta atacar los directorios activos, no solo porque tiene acceso a todo, sino que tambien por este archivo pues tiene lo lo relacionado con directorio activo, incluyendo hashes de contraseñas)
+2. Elegir **Add a new forest** con *Root domain name* `corp.lab`.
 
-Si se ve algun tipo de actividad en ese archivo es bastante posible que todo el dominio este comprometido
+   ![Nuevo bosque corp.lab](images/ad/13_nuevo_bosque.png)
 
-Despues dar Next en todo, nos aparece la pestaña "Installation" donde damos click en "Install". Despues de la instalacion el servidor se reinicia automaticamente.
+3. Mantener marcados **DNS Server** y **Global Catalog (GC)** y definir una contraseña robusta de **DSRM** (*Directory Services Restore Mode*).
+4. Dejar por defecto *DNS Options*, *NetBIOS Name* y *Paths*.
 
+   ![Rutas de la base de datos, logs y SYSVOL](images/ad/14_rutas_ntds_sysvol.png)
 
+   > 🔎 **Dato de seguridad:** en *Paths* se ve dónde queda `NTDS.dit`, la base de datos de Active Directory (incluye los hashes de las contraseñas del dominio). Es un objetivo prioritario para los atacantes: cualquier acceso o copia sospechosa de este archivo indica que probablemente todo el dominio está comprometido.
 
-4. Verificamos que AD este funcionando
+5. Revisar los prerrequisitos y clic en **Install**. El servidor se reinicia automáticamente.
 
-En un principio, deberia aparecer CORP\Administrator asi haciendo referencia a que estamos en el dominio CORP
+   ![Verificación de prerrequisitos](images/ad/15_prerrequisitos.png)
 
-Despues de iniciar sesion ahi, en powershell usamos el comando:
-  Get-ADDomain
+---
 
-Si da información sobre "corp.lab" entonces significa que el AD esta corriendo.
+## 4. Verificar que AD funciona
 
+Tras el reinicio, el inicio de sesión aparece como `CORP\Administrator`, indicando que el equipo ya está en el dominio `CORP`:
 
+![Inicio de sesión como CORP\Administrator](images/ad/16_login_corp_administrator.png)
 
+En PowerShell:
 
-5. Arreglar DNS
+```powershell
+Get-ADDomain
+```
 
-Debemos cambiar el dns preferido a 10.0.20.10 en vez de 8.8.8.8 (Si es que no se cambio automaticamente)
+Si devuelve la información de `corp.lab`, AD está funcionando.
 
-Tambien esta la opcion de que haya cambiado a 127.0.0.1 (loopback), para este laboratorio mejor cambiarla a 10.0.20.10 para hacer troubleshooting de DNS, AD replication, and errores de cliente, pues cambiarlo facilita saber que servidor se esta usando exactamente.
+![Salida de Get-ADDomain](images/ad/17_get_addomain.png)
 
-Abrimos PowerShell como administrador y verificamos que todo haya quedado bien configurado:
+---
 
-  ipconfig /all
+## 5. Ajustar el DNS
 
-El dns deberia estar listado como 10.0.20.10
+Cambiar el DNS preferido a `10.0.20.10` (si no cambió automáticamente). Puede que Windows lo haya puesto en `127.0.0.1`; en este laboratorio es preferible la IP explícita porque facilita el troubleshooting de DNS, replicación de AD y errores de clientes, al saber exactamente qué servidor se está usando.
 
+![DNS preferido 10.0.20.10](images/ad/18_dns_preferido.png)
 
-Despues corremos:
-  nslookup addc01.corp.lab
+Verificar en PowerShell como administrador:
 
-Deberia mostrar
-  
-  Name:    addc01.corp.lab
-  Address: 10.0.20.10
+```powershell
+ipconfig /all          # DNS Servers debe incluir 10.0.20.10
+```
 
-Esto significa que 
-  DNS esta instalado
-  La zona corp.lab existe
-  El Controlador de Dominio registro su registro de DNS
-  El DNS puede resolver el hostname del directorio activo
+![ipconfig /all](images/ad/19_ipconfig_all.png)
 
-Ahora corremos el comando
-  Get-Service DNS,NTDS
+```powershell
+nslookup addc01.corp.lab
+```
 
-Y deberia salir
-  Running DNS
-  Running NTDS
+Resultado esperado:
 
+```text
+Name:    addc01.corp.lab
+Address: 10.0.20.10
+```
 
-Finalmente verificamos acceso a internet por pfsense
+![nslookup addc01.corp.lab](images/ad/20_nslookup_addc01.png)
 
-  ping 10.0.20.1
-  ping 8.8.8.8
-  nslookup microsoft.com
+Esto confirma que el DNS está instalado, que la zona `corp.lab` existe, que el DC registró su registro DNS y que el DNS resuelve el hostname del controlador de dominio.
 
-Si en todas devuelve respuestas e ip's esta bien configurado.
+```powershell
+Get-Service DNS,NTDS     # ambos deben estar en Running
+```
 
-Tomamos un snapshot de la maquina y lo nombreamos "DC01 - Fresh Domain Controller"
+![Servicios DNS y NTDS](images/ad/21_servicios_dns_ntds.png)
 
+Comprobar de nuevo la salida a Internet a través de pfSense:
 
-Ahora el siguiente paso es crear Unidades Organizacionales antes de incluir workstations en el dominio
+```powershell
+ping 10.0.20.1
+ping 8.8.8.8
+nslookup microsoft.com
+```
 
-------------------------------------------------------------------------------------
+![Conectividad final](images/ad/22_conectividad_final.png)
 
-Para crear las OU's (Organizational Units) nos vamos al Server Manager y buscamos Tools → Active Directory Users and Computers (Aqui es donde se pueden crear usuarios, grupos, etc.)
+📸 Tomar un snapshot: **"DC01 - Fresh Domain Controller"**.
 
-En esa nueva pestaña nos paramos sobre corp.lab y creamos una OU llamada "Corp". Esta sera la Unidad Organizacional mas grande.
+---
 
-Despues nos metemos a Corp y creamos las unidades organizacionales siguientes:
+## 6. Crear las Unidades Organizativas
 
-Corp
-├── Users
-├── Workstations
-├── Servers
-├── Admins
-├── Service Accounts
-└── Groups
+Antes de unir equipos al dominio se crean las OU. En **Server Manager → Tools → Active Directory Users and Computers**:
 
-No se usan las carpetas Default que ya hay (Users y Computers) porque estas no son OU's sino que son containers
+![Menú Tools → ADUC](images/ad/23_menu_aduc.png)
 
-A los containers no se les pueden aplicar GPO's y son casi siempre legacy defaults
+1. Sobre `corp.lab`, crear una OU llamada **Corp** (la OU raíz del laboratorio).
 
-En cambio as OU's:
-  Permiten Group Policy application.
-  Permiten la delegacion.
-  Es como las empresas organizan y usan AD
+   ![Botón para crear una OU](images/ad/24_nueva_ou.png)
 
-Por ejemplo, mas adelante se pueden tener politicas como:
-  Workstations OU
-      ↓
-  Disable LLMNR
-  Enable Sysmon
-  Enable auditing
+   ![OU Corp](images/ad/25_ou_corp.png)
 
-o
+2. Dentro de `Corp`, crear:
 
-  Servers OU
-      ↓
-  Otras politicas de seguridad
+   ```text
+   Corp
+   ├── Users
+   ├── Workstations
+   ├── Servers
+   ├── Admins
+   ├── Service Accounts
+   └── Groups
+   ```
 
-Ahora, antes de comenzar a meter maquinas en el dominio, creamos un usuario normal (sergio) y un usuario admin (sergio.admin)
+   ![Estructura de OUs](images/ad/26_estructura_ous.png)
 
-Para el usuario normal entramos en la OU de Users y creamos un nuevo usuario con nombre y apellido
+**¿Por qué no usar las carpetas por defecto `Users` y `Computers`?** No son OU sino *containers*: no se les pueden vincular GPO y son casi siempre valores heredados (*legacy*). Las OU, en cambio, permiten aplicar Group Policy, delegar permisos y son la forma en que las empresas organizan AD. Por ejemplo:
 
-Para el usuario admin entramod en la OU de Admins y creamos un nuevo usuario con nombre y apellido. Adicionalmente, despues de crearlo, damos click derecho sobre el y le damos a "Add to a group". En el recuadro escribimos "Domain Admins" y seleccionamos lo que aparezca en "Check Names".
+```text
+Workstations OU          Servers OU
+      ↓                       ↓
+Disable LLMNR            Otras políticas de seguridad
+Enable Sysmon
+Enable auditing
+```
 
-Damos "Ok" y guardamos.
---------------------------------------------------------------------------------------
-El siguiente paso es incluir una Workstation al directorio activo. Lo haremos con una Windows 11.
+---
 
-Antes de hacerle hardening toca hacer estos pasos:
+## 7. Crear usuarios
 
-1. Finish AD deployment
-2. Join a workstation to the domain
-3. Verify DNS
-4. Verify Group Policy
-5. Create administrative users/groups
-6. Deploy Wazuh
-7. Harden the Domain Controller
+Se crean dos cuentas separadas para practicar la separación de privilegios: un usuario normal (`sergio`) y uno administrativo (`sergio.admin`).
+
+### Usuario normal
+
+En la OU **Corp → Users** → *Create a new user*:
+
+![Crear un usuario nuevo](images/ad/27_nuevo_usuario.png)
+
+![Usuario sergio](images/ad/28_usuario_sergio.png)
+
+Marcar **User must change password at next logon**.
+
+![Usuario creado](images/ad/29_usuario_creado.png)
+
+### Usuario administrador
+
+En la OU **Corp → Admins**, crear `sergio.admin`:
+
+![Usuario sergio.admin](images/ad/30_usuario_sergio_admin.png)
+
+Luego: clic derecho sobre el usuario → **Add to a group** → escribir `Domain Admins` → **Check Names** → **OK**.
+
+![Agregar a Domain Admins](images/ad/31_grupo_domain_admins.png)
+
+![Usuario agregado al grupo](images/ad/32_grupo_agregado.png)
+
+---
+
+## Siguientes pasos
+
+1. ~~Terminar el despliegue de AD~~ ✅
+2. [Unir una workstation al dominio](Win11_User_Checho.md)
+3. Verificar DNS
+4. [Verificar Group Policy](SecurityBaselineGPOs_Checho.md)
+5. Crear usuarios y grupos administrativos
+6. [Desplegar Wazuh](WazuhServer_Checho.md)
+7. Endurecer el controlador de dominio
+
+[⬅️ Anterior: Bastion Host](DebianBastionHost_Checho.md) · [Volver al README](README.md) · [Siguiente: Workstation Windows 11 ➡️](Win11_User_Checho.md)
