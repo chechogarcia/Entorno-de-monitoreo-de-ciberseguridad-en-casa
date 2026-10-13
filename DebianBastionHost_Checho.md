@@ -1,446 +1,504 @@
-Creamos una maquina virtual con Debian (En este caso usé Debian 13.4)
-Lo montamos en la red de Management (10.0.40.0/28)
-Al configurar la maquina virtual le damos 2 GB de RAM y 20 GB de Disco pues al ser un Bastion Host no neecesita muchos recursos y debe correr lo más mínimo
+# 2. Bastion Host (Debian 13)
 
-Al encender la máquina virtual, como no se ha configurado ninguna regla para esta red en el firewall, no va a tener conectividad. Por lo que es necesario configurar las opciones de red manualmente.
+[⬅️ Anterior: Firewall pfSense](Firewall_Checho.md) · [Volver al README](README.md) · [Siguiente: Active Directory ➡️](ActiveDirectory_Checho.md)
 
-Mantenemos el default gateway y el name server (DNS) como 10.0.40.1
-Cuando se configure el DNS en la red de servidores cambiaremos el DNS en esta máquina
+El Bastion Host (`bastion01`) es el único punto de entrada administrativo por SSH. Se instala con lo mínimo indispensable y se endurece con MFA (TOTP), llaves SSH, `ufw`, `fail2ban` y AppArmor.
 
-Incluimos tambien un servidor de fallback (En este caso usaremos 8.8.8.8)
+## Contenido
 
-Como este es un ambiente local y de prueba, cuando se solicita el nombre del dominio usaremos lab.internal
+- [Especificaciones](#especificaciones)
+- [Instalación](#instalación)
+- [Acceso a los repositorios con reglas mínimas en pfSense](#acceso-a-los-repositorios-con-reglas-mínimas-en-pfsense)
+- [Herramientas básicas](#herramientas-básicas)
+- [AppArmor](#apparmor)
+- [Hardening: ufw, MFA, SSH y fail2ban](#hardening-ufw-mfa-ssh-y-fail2ban)
+- [Autenticación con llave pública + MFA](#autenticación-con-llave-pública--mfa)
+- [Mejoras futuras](#mejoras-futuras)
 
-De esta forma el FQDN será bastion01.lab.internal
+## Especificaciones
 
-Lo ideal, y para mejora la seguridad, es desactivar el acceso con root de forma remota. Esto lo hace Debian automaticamente si no se establece una contraseña para el usuario root en la configuracion de usuarios.
+| Parámetro | Valor |
+| --------- | ----- |
+| Hostname / FQDN | `bastion01` / `bastion01.lab.internal` |
+| Sistema operativo | Debian 13.4 (sin entorno gráfico) |
+| RAM / Disco | 2 GB / 20 GB |
+| Red | Management – `10.0.40.0/28` (interfaz OPT3 en pfSense) |
+| IP | `10.0.40.10` |
+| Gateway / DNS | `10.0.40.1` (DNS de respaldo: `8.8.8.8`) |
+| Admin VM (cliente SSH) | `10.0.40.11` |
 
-Al hacer esto nos pedira que creemos un usuario que va a tener menos privilegios que el superusuario, pero que puede usar root para acceso privilegiado temporal. Se pedira un nombre de usuario y una contraseña
+> Un bastion no necesita muchos recursos: debe correr lo mínimo posible para reducir la superficie de ataque.
 
-Continuando la configuracion se nos va a pedir que configuremos un packet manager. Esto se maneja automaticamente en la instalacion, entonces solo seleccionamos el mirror de Estados Unidos y el mirror deb.debian.org
+---
 
-Despues se pregunta por un proxy. Como estamos por ahora comenzando no se incluye un proxy, sin embargo, para futuras actividades (Como Web filtering, Traffic inspection, Malware sandboxing, Corporate simulation) podemos desplegar un Squid, Burp Suite o mitmproxy
+## Instalación
 
-Ahora, para que se instalen los paquetes la maquina debe tener acceso a internet, por lo que añadimos una regla que permita el trafico de cualquier subred de management hacia afuera (outbould rule)
+### Red
 
-Se crea una regla que permite todo trafico IPV4 hacia afuera, sin embargo, esta regla se debe modificar mas adelante para solo permitir tráfico necesario hacia afuera (Ejemplo: DNS, HTTP/HTTPS, SSH/RDP) Todo el resto de trafico innecesario se deberia bloquear
+Como aún no hay reglas en el firewall para esta subred, la VM no tendrá conectividad por DHCP, así que la red se configura manualmente durante la instalación:
 
-Como la instalacion para un servidor Bastion debe ser minima, en la pestaña de "Software Selection", solo seleccionamos las casillas de "SSH Server" y "standard system utilities". Esto instalará openssh para la administracion remota, acceso seguro por shell, tunneling ssh, SCP/SFTP y pivoteo y manejo
+- Gateway y DNS: `10.0.40.1` (cuando el DNS de Active Directory esté listo se cambiará aquí).
+- DNS de respaldo: `8.8.8.8`.
+- Dominio: `lab.internal` (entorno local de pruebas), con lo que el FQDN queda `bastion01.lab.internal`.
 
-No se incluye la GUI porque esta es mas dificil de asegurar (harden), es mas pesada y tiene una mayor superficie de ataque
+### Usuarios
 
-Despues, como este es el unico sistema operativo en la maquina virtual, instalamos el GRUB boot loader como se haria en una maquina fisica normal
+Dejar **vacía la contraseña de `root`**. Así Debian bloquea el acceso directo como root y agrega al usuario inicial al grupo `sudo`.
 
-Aqui termina la instalacion y se reinicia la maquina virtual y ya se puede acceder a ella con el usuario que creamos anteriormente
+![Contraseña de root vacía](images/bastion/01_root_sin_contrasena.png)
 
------------------------------------------------------------------------------------------------------------------------------------------------------
-#Hardening
+Luego el instalador pide crear un usuario sin privilegios (con acceso temporal a privilegios mediante `sudo`):
 
-Despues de completar la instalación probamos conectividad
+![Creación del usuario no root](images/bastion/02_usuario_no_root.png)
 
+### Gestor de paquetes y proxy
+
+- Mirror: Estados Unidos → `deb.debian.org`.
+- Proxy: ninguno por ahora. Más adelante se puede desplegar Squid, Burp Suite o mitmproxy para practicar web filtering, inspección de tráfico, malware sandboxing o simular un entorno corporativo.
+
+Para que la instalación descargue paquetes, se crea **temporalmente** en pfSense una regla que permite todo el tráfico IPv4 de la subred Management hacia afuera. Esta regla se deshabilita después (ver más abajo) y se reemplaza por reglas que solo permiten lo necesario.
+
+### Selección de software
+
+Marcar únicamente **SSH server** y **standard system utilities**. OpenSSH da administración remota, shell segura, túneles SSH y SCP/SFTP.
+
+No se instala entorno gráfico: es más pesado, más difícil de endurecer y amplía la superficie de ataque.
+
+![Selección de software mínima](images/bastion/03_seleccion_software.png)
+
+### Finalizar
+
+Instalar el gestor de arranque GRUB (es el único sistema operativo de la VM), reiniciar e iniciar sesión con el usuario creado.
+
+Servicios en ejecución tras la instalación mínima:
+
+```bash
+systemctl list-units --type=service --state=running
+```
+
+![Servicios activos tras la instalación](images/bastion/04_servicios_activos.png)
+
+### Verificar conectividad y actualizar
+
+```bash
 ip a
-
-ip route (deberia mostrar la default gateway como la configuramos)
-
-ping <default gateway>
+ip route          # debe mostrar el default gateway configurado
+ping 10.0.40.1
 ping 8.8.8.8
 ping google.com
 
 sudo apt update && sudo apt upgrade -y
+```
 
-Despues de actualizar los paquetes deshabilitamos la regla del firewall que permite el acceso a internet. 
+Después de actualizar, **deshabilitar la regla temporal** que daba acceso total a Internet.
 
+---
 
------------------------------------------------------------------------------------------------------------------------------------------------------
-Ahora, para instalar herramientas como vim, curl/wget, tmux, htop, nmap, tcpdump, ufw, fail2ban, dnsutils, y para recibir actualizaciones de los paquetes debemos añadir una regla en el firewall que permita este tráfico
+## Acceso a los repositorios con reglas mínimas en pfSense
 
-El firewall PfSense permite resolver nombres de dominio especificos y actualizar dinamicamente sus reglas de firewall usando el FDQN Alias que se haya configurado.
+Para instalar herramientas y recibir actualizaciones sin abrir todo el tráfico, se usa un **alias FQDN**: pfSense resuelve periódicamente los dominios del alias y actualiza las reglas con sus IP.
 
-Para hacer esto abrimos la GUI del firewall y vamos al apartado Firewall>Aliases en la pestaña IP
+### 1. Crear el alias
 
-Presionamos 'Add' y creamos un alias de la siguiente forma:
+En **Firewall → Aliases → IP → Add**:
 
-  1. Name: Bastion_Repo_Domains
-  2. Type: Host(s)
+| Campo | Valor |
+| ----- | ----- |
+| Name | `Bastion_Repo_Domains` |
+| Type | Host(s) |
+| Hosts | `deb.debian.org`, `security.debian.org` |
 
-Y añadimos el FDQN abajo.
-  deb.debian.org
-  security.debian.org
+![Alias FQDN con los repositorios de Debian](images/bastion/05_alias_fqdn_repos.png)
 
-Guardamos y aplicamos los cambios.
+Guardar y aplicar los cambios.
 
-Antes de continuar a crear las reglas para autorizar este trafico tomamos un snapshot del firewall y del Bastion.
+### 2. Tomar snapshots
 
-*Insertar fotos snapshots*
+Antes de crear las reglas, tomar un snapshot del firewall y del bastion para poder volver atrás.
 
+![Snapshot del firewall](images/bastion/06_snapshot_firewall.png)
 
-Ahora creamos las reglas para permitir el trafico hacia afuera desde el bastion host.
+![Snapshot del bastion](images/bastion/07_snapshot_bastion.png)
 
-1. Entramos a las reglas de la interfaz a la que esta conectado el Bastion y añadimos las siguientes reglas:
+### 3. Crear las reglas de salida
 
-Action: Pass
-Protocol: TCP/UDP
-Source: Single Host or Alias -> [Your Bastion Host IP]
-Destination: Any or Interface Address
-Port Range: 53 (DNS)
-Description: Allow DNS from Bastion Host
+En **Firewall → Rules → OPT3** (interfaz de Management):
 
+| Acción | Protocolo | Origen | Destino | Puerto | Descripción |
+| ------ | --------- | ------ | ------- | ------ | ----------- |
+| Pass | TCP/UDP | `10.0.40.10` | any | 53 (DNS) | Allow DNS from Bastion Host |
+| Pass | TCP | `10.0.40.10` | `Bastion_Repo_Domains` | 443 (HTTPS) | Allow Package Downloads (HTTPS) |
+| Pass | TCP | `10.0.40.10` | `Bastion_Repo_Domains` | 80 (HTTP) | Allow Package Downloads (HTTP) |
 
-Action: Pass
-Protocol: TCP
-Source: Single Host or Alias -> [Your Bastion Host IP]
-Destination: Single Host or Alias -> Bastion_Repo_Domains
-Port Range: HTTP and HTTPS (You can create a Port Alias for 80 and 443, or create two separate rules)
-Description: Allow Package Downloads from Bastion Host
+> 💡 Para HTTP y HTTPS se pueden crear dos reglas separadas o un *Port Alias* con 80 y 443.
 
-Aplicamos los cambios
+![Regla DNS](images/bastion/08_regla_dns.png)
 
+![Regla HTTPS hacia el alias](images/bastion/09_regla_https.png)
 
-Ahora, para verificar la funcionalidad de estos cambios realizamos los siguientes pasos en el bastion host:
+![Regla HTTP hacia el alias](images/bastion/10_regla_http.png)
 
-1. Borramos el cache de los paquetes viejos
-  sudo apt-get clean
-2. Actualizamos los paquetes para verificar que pfsense permite el trafico
-  sudo apt-get update
+Aplicar los cambios. Resultado en OPT3 (incluye también una regla ICMP para hacer ping desde el bastion y la regla temporal de Internet ya deshabilitada):
 
+![Reglas de salida del bastion en OPT3](images/bastion/11_reglas_opt3_salida.png)
 
+### 4. Verificar desde el bastion
 
-Ahora que tenemos acceso al repositorio de paquetes, descargamos herramientas basicas dfe gestion para el bastion Host:
+```bash
+sudo apt-get clean     # borra la caché de paquetes
+sudo apt-get update    # debe funcionar si pfSense permite el tráfico
+```
 
-curl: Comando para probar connectividad a paginas web por http y https. Tambien sirve para probar APIs
-auditd: Servicio de linux para auditar (man auditd despues de instalar para leer el manual)
-fail2ban: herramienta para evitar ataques de fuerza bruta
-ufw: firewall local para bloquear trafico malicioso
-libpam-google-authenticator: Google Authenticator para MFA al iniciar sesion en el host (man google-authenticator)
-htop: Monitoreo interactivo de telemetria del servidor (CPU, Memory and process usage)
-wazuh agent
-nmap: useful for network discovery and auditing security within the network (no puede salir de la red, solo escaneo hacia adentro)
-tcpdump: para interceptar, capturar y analizar trafico de red (similar a wireshark pero en consola)
-traceroute/MTR: Para diagnosticar problemas con la conectividad
+---
 
+## Herramientas básicas
 
-Para todas aplicaciones, como estamos usando Debian 13 (que se especializa en seguridad y estabilidad), hay que revisar si hay algun tipo de bloque por AppArmor (activado por default en Debian)
+```bash
+sudo apt install -y curl auditd fail2ban ufw libpam-google-authenticator \
+  htop nmap tcpdump traceroute mtr-tiny
+```
 
-AppArmor es una utilidad de Linux que sirve para restringir lo que pueden hacer programas especificos. Utiliza perfiles infividuales para restringir las actividades (por ejemplo leer un archivo o restringir a que redes puede acceder)
+| Herramienta | Uso |
+| ----------- | --- |
+| `curl` | Probar conectividad HTTP/HTTPS y APIs |
+| `auditd` | Auditoría del sistema Linux (`man auditd`) |
+| `fail2ban` | Protección contra fuerza bruta |
+| `ufw` | Firewall local |
+| `libpam-google-authenticator` | MFA (TOTP) al iniciar sesión (`man google-authenticator`) |
+| `htop` | Monitoreo interactivo de CPU, memoria y procesos |
+| `nmap` | Descubrimiento y auditoría de red interna (no puede salir de la red) |
+| `tcpdump` | Captura y análisis de tráfico en consola (similar a Wireshark) |
+| `traceroute` / `mtr` | Diagnóstico de conectividad |
 
-sudo aa-status | less
-Esto para ver los perfiles cargados en apparmor
+El agente de Wazuh se instala más adelante (ver [Wazuh](WazuhServer_Checho.md#instalar-agentes)).
 
-Los perfiles que esten en modo "Complain" son aplicaciones que funcionan con normalidad, pero cualquier accion que viole las reglas de AppArmor se registran en el log
+---
 
-Los perfiles que esten en modo "Enforce" son aplicaciones que ApppArmor restringe activamente segun su perfil
+## AppArmor
 
-Para crear o modificar los perfiles toca instalar un paquete de utilidades:
+Debian 13 trae **AppArmor** activado por defecto. AppArmor restringe lo que puede hacer cada programa (qué archivos lee, a qué redes accede) mediante perfiles individuales. Si alguna herramienta falla sin razón aparente, conviene revisar si AppArmor la está bloqueando.
+
+```bash
+sudo aa-status | less     # perfiles cargados
+```
+
+- **Complain:** la aplicación funciona normalmente, pero las violaciones se registran en el log.
+- **Enforce:** AppArmor bloquea activamente lo que el perfil no permite.
+
+Para crear o modificar perfiles:
+
+```bash
 sudo apt install apparmor-utils apparmor-profiles
+```
 
-Para modificar los perfiles toca modificar los archivos de texto plano de cada perfil ubicados en /etc/apparmor.d/
+Los perfiles están en `/etc/apparmor.d/` y se nombran reemplazando las `/` de la ruta del ejecutable por `.`. Por ejemplo, el perfil de `/usr/bin/ping` es `/etc/apparmor.d/usr.bin.ping`.
 
-Los perfiles se nombran reemplazando las barras diagonales (/) de la ruta del ejecutable por puntos (.). Por ejemplo, el perfil para /usr/bin/ping se encuentra en /etc/apparmor.d/usr.bin.ping.
-Aqui toca entender las reglas basicas:
+**Reglas básicas**
 
-Para acceso a archivos:
-  r: Permite leer
-  w: Permite escribir o modificar
-  px: Ejecuta el archivo bajo su propio perfil de AppArmor.
-  /**: El doble asterisco significa el directorio actual y todos sus subdirectorios.
+| Regla | Significado |
+| ----- | ----------- |
+| `r` | Lectura |
+| `w` | Escritura / modificación |
+| `px` | Ejecutar el archivo bajo su propio perfil |
+| `/**` | El directorio y todos sus subdirectorios |
+| `network inet stream,` | Conexiones TCP (IPv4) |
+| `network inet6 dgram,` | Conexiones UDP (IPv6) |
 
-Ejemplos:
-  /var/log/nginx/*.log w,      # Permite escribir en cualquier archivo .log dentro de esa ruta
-  /etc/nginx/** r,             # Permite leer todo lo que esté dentro de /etc/nginx/
+```text
+/var/log/nginx/*.log w,      # permite escribir cualquier .log en esa ruta
+/etc/nginx/** r,             # permite leer todo dentro de /etc/nginx/
+```
 
-Para acceso a la red:
-  network inet stream,: Permite conexiones de red TCP (IPv4).
-  network inet6 dgram,: Permite conexiones de red UDP (IPv6).
+**Forma recomendada: modo aprendizaje**
 
+1. Poner el programa en modo *complain* y usarlo normalmente.
+2. Ejecutar `sudo aa-logprof`: lee los logs y pregunta si permitir o denegar cada acción.
+3. Recargar el perfil en el kernel:
 
-Otra forma es poniendo el programa en "modo aprendizaje" (Complain). Esto logea toda la actividad de ese programa. Despues de usar el programa de forma noprmal se corre el comando:
-sudo aa-logprof
+   ```bash
+   sudo apparmor_parser -r /etc/apparmor.d/nombre.del.perfil
+   ```
 
-Con esto el sistema leera los logs de actividad y preguntará si quieres denegar o permitir cada una de las acciones. 
-Esta es la forma recomendada.
+4. Volver al modo estricto:
 
-Despues de modificar las reglas se corre el siguiente comando para recargar el perfil en AppArmor y se apliquen las restricciones en el kernel
-sudo apparmor_parser -r /etc/apparmor.d/nombre.del.perfil
+   ```bash
+   sudo aa-enforce /ruta/al/programa
+   ```
 
-Finalmente, se regresa el programa al modo estricto (Enforce):
-sudo aa-enforce /ruta/al/programa
------------------------------------------------------------------------------------------------------------------------------------------------------
+---
 
-Ahora desplegamos fail2ban, ufw, el autenticador de google y auditd
+## Hardening: ufw, MFA, SSH y fail2ban
 
+### 1. ufw
 
-1. ufw
+Permitir SSH desde la subred de Management y activar el firewall:
 
-En ufw debemos permitir el trafico desde la subred de manejo y el trafico ssh publico
-
+```bash
 sudo ufw allow from 10.0.40.0/28
 sudo ufw allow 22/tcp
-
 sudo ufw enable
+```
 
+> 💡 `sudo ufw allow 22/tcp` permite SSH desde cualquier origen. Una vez probado el acceso con llave (más abajo), se puede restringir a la Admin VM con `sudo ufw allow from 10.0.40.11 to any port 22 proto tcp` y borrar las reglas genéricas (`sudo ufw status numbered` → `sudo ufw delete <n>`).
 
-2. Configurar el autenticador de google (PAM MFA)
+### 2. Google Authenticator (PAM MFA)
 
-Correr el comando:
-  google-authenticator
+Con el usuario que va a iniciar sesión, ejecutar:
 
-Follow the on-screen prompts: Say Y to time-based tokens, Y to disallow multiple uses of the same token, N to the wide time-window, and Y to rate-limiting.
+```bash
+google-authenticator
+```
 
-Actualizar la configuracion del PAM (Pluggable Authentication Modules) - PAM es un marco centralizado que gestiona la seguridad y la autenticación de usuarios
-  sudo nano /etc/pam.d/sshd
+Responder: **Y** a tokens basados en tiempo, **Y** a no permitir reutilizar el mismo token, **N** a ampliar la ventana de tiempo y **Y** al rate-limiting. Escanear el código QR con la app de autenticación.
 
-Adicionar esta linea al comienzo del archivo justo debajo de la linea @include common-auth (nullok sirve para evitar el lockout si no se ha configurado la autenticacion para el usuario - se desactiva cuando termine el testeo)
-  auth required pam_google_authenticator.so nullok
+Editar la configuración de PAM para SSH (PAM, *Pluggable Authentication Modules*, es el marco que centraliza la autenticación en Linux):
 
-Se adiciona la linea en ese lugar para que no haya problemas con el setup de las claves ssh. Si se deja antews de esa linea cuando quiera iniciar sesion se pediria el codigo de google antes de pedir la conexion ssh
+```bash
+sudo nano /etc/pam.d/sshd
+```
 
+Agregar justo **debajo** de `@include common-auth`:
 
-Finalmente, actualizamos la configuracion del servicio de ssh
+```text
+auth required pam_google_authenticator.so nullok
+```
 
+- Se coloca después de `common-auth` para que primero se pida la contraseña y luego el código TOTP.
+- `nullok` evita quedarse por fuera si un usuario aún no configuró MFA. **Quitarlo al terminar las pruebas.**
+
+![Configuración de PAM para SSH](images/bastion/12_pam_sshd.png)
+
+> ⚠️ En la captura el módulo aparece como `pam_google_authentication.so`. El nombre correcto del módulo es **`pam_google_authenticator.so`**.
+
+### 3. Configuración de SSH (fase 1: contraseña + TOTP)
+
+```bash
 sudo nano /etc/ssh/sshd_config
+```
 
-Modificamos el archivo para que incluya estas lineas
+```text
+PermitRootLogin no
 
-  PermitRootLogin no
-  
-  PubkeyAuthentication yes
-  PasswordAuthentication yes
-  
-  KbdInteractiveAuthentication yes
-  ChallengeResponseAuthentication yes
-  
-  UsePAM yes
-  
-  AuthenticationMethods keyboard-interactive
-  
-  X11Forwarding no
-  AllowAgentForwarding no
-  PermitTunnel no
-  
-  MaxAuthTries 3
-  LoginGraceTime 30
+PubkeyAuthentication yes
+PasswordAuthentication yes
 
-Guardamos y corremos el siguiente comando para verificar que la configuracion esta bien escrita (Si no aparece nada es porque la configuracion esta bien):
+KbdInteractiveAuthentication yes
+ChallengeResponseAuthentication yes   # alias antiguo de KbdInteractiveAuthentication
 
+UsePAM yes
+
+AuthenticationMethods keyboard-interactive
+
+X11Forwarding no
+AllowAgentForwarding no
+PermitTunnel no
+
+MaxAuthTries 3
+LoginGraceTime 30
+```
+
+Validar la sintaxis (si no imprime nada, está bien) y reiniciar:
+
+```bash
 sudo sshd -t
-
-Reiniciar SSH
 sudo systemctl restart ssh
+```
 
+### 4. fail2ban + ufw
 
-3. Conectar Fail2Ban a UFW
+> Recurso útil: <https://www.alcancelibre.org/manuales/configuracion-de-fail2ban>
 
-(Otro recurso util para esta configuracion: https://www.alcancelibre.org/manuales/configuracion-de-fail2ban)
-
-Crear una copia del archivo de configuracion de fail2ban
-
+```bash
 sudo cp /etc/fail2ban/jail.conf /etc/fail2ban/jail.local
 sudo nano /etc/fail2ban/jail.local
+```
 
-Modificamos el parametro "banaction" en la seccion [DEFAULT] y verificamos que la red de manejo este en la whitelist
+En la sección `[DEFAULT]`, configurar `ufw` como acción de bloqueo y agregar la red de Management a la lista blanca:
 
-  [DEFAULT]
-  ignoreip = 127.0.0.1/8 ::1 10.0.40.0/28
-  bantime  = 1h     # How long an IP is banned
-  findtime  = 10m   # Time window to count failed attempts
-  maxretry = 3      # Number of failures before ban
-  banaction = ufw
-  banaction_allports = ufw
-  action = %(action_)s #Esta opcion ya estaactiva y action_ es para bloquear la ip invalida
-  
-  [sshd]
-  enabled = true
-  port    = ssh     # Or your custom SSH port
+```ini
+[DEFAULT]
+ignoreip = 127.0.0.1/8 ::1 10.0.40.0/28
+# Tiempo que una IP queda bloqueada
+bantime  = 1h
+# Ventana de tiempo para contar intentos fallidos
+findtime = 10m
+# Fallos permitidos antes del bloqueo
+maxretry = 3
+banaction = ufw
+banaction_allports = ufw
+# action_ = solo bloquear la IP (ya viene activo por defecto)
+action = %(action_)s
 
-Habilitar e iniciar el servicio para aplicar los cambios:
+[sshd]
+enabled = true
+port    = ssh
+```
 
-  sudo systemctl enable fail2ban
-  sudo systemctl start fail2ban
+```bash
+sudo systemctl enable fail2ban
+sudo systemctl start fail2ban
+```
 
+Comandos útiles:
 
-Use the fail2ban-client to check the status of your jails or unban yourself if necessary.
+```bash
+sudo fail2ban-client status sshd                    # estado de la jail
+sudo fail2ban-client set sshd unbanip <IP_ADDRESS>  # desbloquear una IP
+sudo tail -f /var/log/fail2ban.log                  # ver el log
+```
 
-Check jail status: sudo fail2ban-client status sshd
-Unban an IP: sudo fail2ban-client set sshd unbanip <IP_ADDRESS>
-View logs: tail -f /var/log/fail2ban.log
+> ⚠️ Con MFA, los intentos fallidos de TOTP generan mensajes distintos a los de contraseña incorrecta, así que el filtro `sshd` de fail2ban puede no detectarlos. Después de un intento fallido de MFA, revisar el log de autenticación y confirmar que el filtro coincide con el formato. En Debian 13 los logs de SSH van a journald por defecto: `sudo journalctl -u ssh` (o `/var/log/auth.log` si `rsyslog` está instalado).
 
+### 5. Probar desde la Admin VM
 
-Como estamos requiriendo doble autenticacion (clave ssh y codigo mfa) la configuracion de fail2ban probablemente no agarre los intentos fallidos de MFA, porque los logs son distintos a los que se forman por contraseña incorrecta
+Se crea una VM de administrador (`10.0.40.11`) que se conecta al bastion por SSH. Al conectarse debe pedir contraseña y código de Google Authenticator.
 
-Para solucionar esto debemos entrar a /var/log/auth.log despues de un intento fallido de MFA para verificar que el filtro sshd de fail2ban coincida con el formato de log.
+> Como la Admin VM está en la **misma subred** que el bastion, el tráfico SSH no pasa por pfSense: la conexión funciona aunque no exista una regla en el firewall.
 
-__________________________________________________________________________________________
+---
 
-Despues de probar la connectividad por ssh con contraseña y el codigo de google, creamos una nueva maquina que va a aser como la de un administrador que se conecta al bastion con ssh
+## Autenticación con llave pública + MFA
 
-Como el nuevo host esta dentro de la red de manejo el trafico ssh no pasa por el firewall, por lo que, asi no haya configurado una regla para el firewall que permita el ssh desde este nuevo host, la conexion igualmente es exitosa.
+### 1. Crear el par de llaves en la Admin VM
 
-Cuando probamos el ssh, si todo quedó bien configurado, pedira contraseña y codigo de google, y despues de esto se hará la conexion.
+```bash
+ssh-keygen -t ed25519 -a 100
+```
 
-___________________________________________________________________________________________
+Ed25519 es el algoritmo moderno de SSH: llaves más pequeñas, más rápido y con excelente seguridad. Aceptar la ruta por defecto y **usar una passphrase**.
 
-Ahora que vemos que la conexion por ssh con clave funciona, probaremos con las llaves publicas.
+### 2. Verificar las llaves
 
-Para esto se debe crear una pareja de llaves publica-privada en el Host del administrador.
+```bash
+ls -l ~/.ssh
+```
 
-1. Crear pareja de llaves en la maquina de administrador
+Los permisos deben verse así:
 
-  ssh-keygen -t ed25519 -a 100
+```text
+-rw------- id_ed25519
+-rw-r--r-- id_ed25519.pub
+```
 
-Why?
+### 3. Copiar la llave pública al bastion
 
-  Ed25519 is the modern SSH algorithm.
-  Smaller keys.
-  Faster.
-  Excellent security.
+```bash
+ssh-copy-id sergio@10.0.40.10
+```
 
-Aceptar el default cuando se pida "Enter file in which to save the key"
+Pide la contraseña del usuario en el bastion y se encarga de crear `~/.ssh/authorized_keys` con los permisos correctos. En el bastion, verificar:
 
-Tambien, usar una passfrase cuando la pida
+```bash
+cat ~/.ssh/authorized_keys     # debe aparecer: ssh-ed25519 AAAAC3...
+```
 
-2. Verificar las llaves
+### 4. Exigir llave + MFA
 
-  ls -l ~/.ssh
+En el bastion, editar `/etc/ssh/sshd_config` para que quede así:
 
-Esto mostrara la pareja de llaves (los permisos deberian ser iguales a los que se muestran en el ejemplo):
-  -rw------- id_ed25519
-  -rw-r--r-- id_ed25519.pub
+```text
+PermitRootLogin no
 
-3. Copiar la llave publica al bastion
+PubkeyAuthentication yes
+PasswordAuthentication no
 
-  ssh-copy-id sergio@10.0.40.10
+KbdInteractiveAuthentication yes
+UsePAM yes
 
-Nos va a pedir la clave de sergio@10.0.40.10, entonces la ponemos. Esto creará ~/.ssh en el bastion, authorized_keys, pondrá permisos, copiara la llave publica
+AuthenticationMethods publickey,keyboard-interactive
+```
 
-Despues de hacerlo, el la terminal del bastion verificamos que si se haya copiado la llave publica: 
-  cat ~/.ssh/authorized_keys
+### 5. Reiniciar SSH
 
-Deberia aparecer algo asi: ssh-ed25519 AAAAC3...
+```bash
+sudo sshd -t
+sudo systemctl restart ssh
+```
 
-4. Requerir llave + mfa:
+### 6. Probar la autenticación
 
-En el bastion:
-  sudo nano /etc/ssh/sshd_config
+**Sin cerrar la sesión actual**, abrir otra terminal en la Admin VM:
 
-Y modificamos esta linea para que quede de la siguiente manera:
+```bash
+ssh sergio@10.0.40.10
+```
 
-  AuthenticationMethods publickey,keyboard-interactive
+Flujo esperado:
 
+```text
+SSH key accepted
+      ↓
+Verification code:
+      ↓
+TOTP accepted
+      ↓
+Login successful
+```
 
-Verificamos que todo este asi:
+Puede pedir primero la passphrase de la llave y luego el código de Google.
 
-  PermitRootLogin no
+### 7. Confirmar qué llave se usa
 
-  PubkeyAuthentication yes
-  PasswordAuthentication no
-  
-  KbdInteractiveAuthentication yes
-  UsePAM yes
-  
-  AuthenticationMethods publickey,keyboard-interactive
+```bash
+ssh -v sergio@10.0.40.10
+```
 
+Si aparecen `Offering public key:` y `Server accepts key`, la llave se está usando correctamente.
 
-5. Reiniciar SSH
-  
-  sudo sshd -t
-  sudo systemctl restart ssh
+### 8. Restringir SSH a la Admin VM
 
+**En pfSense (OPT3):**
 
-6. Probar la autenticacion con la llave
+| Acción | Protocolo | Origen | Destino | Puerto |
+| ------ | --------- | ------ | ------- | ------ |
+| Pass | TCP | `10.0.40.11` | `10.0.40.10` | 22 |
+| Block | TCP | OPT3 net | `10.0.40.10` | 22 |
 
-En la maquina del administrador correr:
-  ssh sergio@10.0.40.10
+![Reglas SSH hacia el bastion en OPT3](images/bastion/13_reglas_opt3_ssh_admin.png)
 
-En este punto puede preguntar por la passfrase de la llave o directamente por el codigo de google
+> ⚠️ Estas reglas solo filtran tráfico que **cruza** el firewall. Mientras la Admin VM y el bastion estén en la misma subred, el control efectivo está en el propio bastion (`ufw` y la restricción `from=` de abajo).
 
+**En el bastion**, limitar desde dónde se acepta la llave:
 
-7. Verificar qué llave se esta usando para la conexión
+```bash
+nano ~/.ssh/authorized_keys
+```
 
-  ssh -v sergio@10.0.40.10
+```text
+ssh-ed25519 AAAA...
+      ↓
+from="10.0.40.11" ssh-ed25519 AAAA...
+```
 
-Si aparecen estas dos lineas:
-  Offering public key:
-  Server accepts key
+Así, aunque alguien robe la llave privada, solo podría usarla desde `10.0.40.11`.
 
-Eso confirma que la llave se esta usando correctamente.
+> 🔐 La llave **privada** nunca debe estar en el bastion. En el bastion solo va la **pública**.
 
-8. Restringir ssh exclusivamwente para el Admin VM
+### 9. Endurecer fail2ban
 
-En pfsense crear las reglas en OPT3:
+Para detectar fuerza bruta incluso si la Admin VM está comprometida, quitar la subred de Management de la lista blanca en `/etc/fail2ban/jail.local`:
 
-| Action | Protocol | Source     | Destination | Port |
-| ------ | -------- | ---------- | ----------- | ---- |
-| Pass   | TCP      | 10.0.40.11 | 10.0.40.10  | 22   |
+```ini
+[DEFAULT]
+ignoreip = 127.0.0.1/8 ::1
+```
 
-| Action | Protocol | Source   | Destination | Port |
-| ------ | -------- | -------- | ----------- | ---- |
-| Block  | TCP      | OPT3 net | 10.0.40.10  | 22   |
+```bash
+sudo systemctl restart fail2ban
+```
 
+---
 
+## Mejoras futuras
 
-9. Testear antes de cerrar la session
+- Mover la Admin VM a otra subred/VLAN para que todo el tráfico SSH cruce el firewall y pueda filtrarse, registrarse y monitorearse, como en una arquitectura empresarial.
+- Agregar una VPN para el acceso administrativo remoto.
 
-Abrir otra terminal para el admin VM y volver a probar
+**Lecturas recomendadas**
 
-  ssh sergio@10.0.40.10
+- [SSH bastion hardening best practices – Teleport](https://goteleport.com/blog/security-hardening-ssh-bastion-best-practices/)
+- [Weak Diffie-Hellman and the Logjam Attack](https://weakdh.org/)
+- [CVE-2020-27347 – NVD](https://nvd.nist.gov/vuln/detail/CVE-2020-27347)
+- Riesgos de permitir ICMP sin restricciones (pendiente: agregar una fuente concreta)
 
-
-El flow deberia ser el siguiente:
-
-  SSH key accepted
-  ↓
-  Verification code:
-  ↓
-  TOTP accepted
-  ↓
-  Login successful
-
-
-Steps adicionales:
-
-En la terminal del bastion hacer lo siguiente:
-
-  nano ~/.ssh/authorized_keys
-
-Cambiar:
-
-  ssh-ed25519 AAAA...
-  ↓
-  from="10.0.40.11" ssh-ed25519 AAAA...
-
-Esto hace que asi alguien se haya robado la credencial publica, solo se pueda conectar desde 10.0.40.11
-
-Por cierto, nunca se deberia tener la llave PRIVADA en el bastion. En el bastion unicamente debe estar la PUBLICA.
-_____________________________________________________________________________
-
-Para evitar ataques de fuerza bruta en caso de que el AdminVM este comprometido, editamos el archivo de configuracion de fail2ban para que evalue todas las requests
-
-sudo nano /etc/fail2ban/jail.local
-
-Modificamos el parametro "banaction" en la seccion [DEFAULT] para que quede de la siguiente manera:
-
-  [DEFAULT]
-  ignoreip = 127.0.0.1/8 ::1
-
-Habilitar e iniciar el servicio para aplicar los cambios:
-
-  sudo systemctl restart fail2ban
-_____________________________________________________________________________
-
-Para mejoras futuras, el AdminVM deberia ir en otra subred para que asi el trafico sí sea evaluado por el firewall.
-
-Y tambien, incluir una vpn para la conexion segura.
-
-For a realistic bastion architecture, many organizations place:
-
-Admin workstation in one subnet/VLAN
-Bastion in a different management subnet/VLAN
-
-so that all SSH traffic must cross a firewall and can be filtered, logged, and monitored. In your lab, you may eventually want to separate the Admin VM and Bastion into different management segments if your goal is to practice enterprise-style access control.
-
-
-Lecturas adicionales para mejoras futuras:
-https://goteleport.com/blog/security-hardening-ssh-bastion-best-practices/
-https://weakdh.org/
-https://www.google.com/search?q=el+protocolo+icmp+es+vulnerable%3F&rlz=1C1GCEA_enCO1162CO1162&gs_lcrp=EgZjaHJvbWUyBggAEEUYOTIHCAEQIRigATIHCAIQIRigAdIBCDgwNTJqMGo3qAIAsAIA&sourceid=chrome&ie=UTF-8&udm=50&fbs=ADc_l-bpk8W4E-qsVlOvbGJcDwpn60DczFdcvPnuv8WQohHLTaf9fS4tJ71bi2aHS-Pmeg0IA2nDWC3A9mnYKHxHonOwOArVa2mNEvEuOSTSa1dtwqTXiOEVAUkLmHqJS4NtOQBb5Y1SA11p0AKFH_iW_mlh-tTME_h7m1BDKcl9pi7TjFC6G6peerUfIZ5AehTCpBR6CaUu-gbsdEbUkKFZjmqUppXPSQ&aep=10&ntc=1&mstk=AUtExfCBKKBE20LseT9SRIkknmiZZ7w10wOxCwspEi37oGoQl3iOdcubHhUqkKQIMLJoTZVi9xnG8ViP651Ndhyub8h13UkHbLX_MQ439JZMQgB_RiaaHosh1rraOVQVILCeeP7ErzI3tv0E2hjLKXi9czD5Oqy7JBKZY0XQTw8B71ar6qHyWkBQyAJy7UbU5s4SmqWQXlQyyUPY1ZeC08z9mGkucfhI9poRkZ27DILgVdaZnn54cXmtqkmmhw&aioh=3&csuir=1&cs=1&mtid=B0gXaoerJY2HwbkP8YPUyA0
-https://nvd.nist.gov/vuln/detail/CVE-2020-27347
+[⬅️ Anterior: Firewall pfSense](Firewall_Checho.md) · [Volver al README](README.md) · [Siguiente: Active Directory ➡️](ActiveDirectory_Checho.md)

@@ -1,270 +1,219 @@
-Una GPO Directiva de Grupo (Group Policy Object en inglés) es una herramienta de Windows Server que permite a los administradores de TI gestionar y configurar de forma centralizada los sistemas operativos, aplicaciones y permisos de seguridad para múltiples usuarios y equipos en una red.
+# 5. GPOs de seguridad (Security Baselines)
 
------------------------------------------------------------------------
-WORKSTATIONS BASELINE
------------------------------------------------------------------------
-Vamos a crear una GPO para las Workstations (Workstation Baseline)
+[⬅️ Anterior: Workstation Windows 11](Win11_User_Checho.md) · [Volver al README](README.md) · [Siguiente: Sysmon ➡️](Deploy_Sysmon_Checho.md)
 
-Vamos a Server Manager > Tools > Group Policy Management
+Una **GPO** (*Group Policy Object*, Directiva de Grupo) permite a los administradores gestionar de forma centralizada la configuración del sistema operativo, aplicaciones y seguridad de muchos usuarios y equipos del dominio.
 
-Aqui, entramos a Domains > corp.lab > Corp > Workstations
+En este laboratorio se crean dos líneas base orientadas a **detección**:
 
-Damos click derecho a la carpeta de la OU "Workstations" y le damos click a "Create a GPO in this domain, and Link it here..."
+| GPO | Vinculada a | Objetivo |
+| --- | ----------- | -------- |
+| **Workstation Baseline** | OU `Corp → Workstations` | Desactivar LLMNR y generar telemetría en los equipos de usuario |
+| **DC Baseline** | OU `Domain Controllers` | Lo mismo, más auditoría específica de Active Directory |
 
-Aqui le ponemos el nombre "Workstation Baseline"
+## Contenido
 
-Damos click derecho sobre la nueva GPO y damos en "Edit"
+- [Workstation Baseline](#workstation-baseline)
+  - [1. Desactivar LLMNR](#1-desactivar-llmnr)
+  - [2. Registro de PowerShell](#2-registro-de-powershell)
+  - [3. Políticas de auditoría](#3-políticas-de-auditoría)
+- [DC Baseline](#dc-baseline)
+- [Aplicar y verificar](#aplicar-y-verificar)
 
-Vamos a crear las siguientes instrucciones:
-  1. Disable LLMNR
-  2. Enable PowerShell Logging
-  3. Enable Audit Policies
+---
 
------------------------------------------------------------------------
-1. Disable LLMNR
+## Workstation Baseline
 
-Para esta primera regla debemos estar en el "Group Policy Management Editor"
+1. **Server Manager → Tools → Group Policy Management**.
+2. Navegar a **Domains → corp.lab → Corp → Workstations**.
+3. Clic derecho sobre la OU → **Create a GPO in this domain, and Link it here...** → nombre: `Workstation Baseline`.
 
-Aqui vamos a Computer Configuration > Policies > Administrative Templates > Network > DNS Client
+   ![Nueva GPO Workstation Baseline](images/gpo/01_nueva_gpo_workstation.png)
 
-Y buscamos la que diga "Turn Off Multicast Name Resolution"
+4. Clic derecho sobre la GPO → **Edit**.
 
-Le damos click derecho y "Edit"
+### 1. Desactivar LLMNR
 
-Ahi seleccionamos "Enabled".
+**Computer Configuration → Policies → Administrative Templates → Network → DNS Client** → **Turn off multicast name resolution** → **Enabled**.
 
-Why disable LLMNR?
-You should disable LLMNR (Link-Local Multicast Name Resolution) to prevent critical credential-harvesting attacks. When DNS fails, LLMNR exposes your network to attackers who can intercept requests, trick computers into authenticating, and steal sensitive password hashes (like NetNTLMv2).The Main RisksLLMNR Poisoning: Attackers on your local network (using tools like Responder) answer name resolution queries claiming to be the requested server.Credential Theft: The victim's machine unknowingly sends its password hash to the attacker to authenticate.Relay Attacks: Attackers can relay stolen hashes to access other servers, bypassing the need to even crack the password. - Gemini AI
+![Desactivar LLMNR](images/gpo/02_desactivar_llmnr.png)
 
------------------------------------------------------------------------
-2. Enable PowerShell Logging
+> **¿Por qué desactivar LLMNR?** Cuando falla el DNS, Windows pregunta el nombre por *multicast* a toda la red local mediante LLMNR (*Link-Local Multicast Name Resolution*). Un atacante en la misma red puede responder haciéndose pasar por el servidor buscado (**LLMNR poisoning**, por ejemplo con *Responder*), lograr que la víctima se autentique contra él y capturar su hash NetNTLMv2 (**robo de credenciales**). Ese hash puede crackearse o retransmitirse a otros servidores (**relay**) sin necesidad de conocer la contraseña.
 
-Aqui vamos a Computer Configuration > Policies > Administrative Templates > Windows Components > Windows Powershell
+### 2. Registro de PowerShell
 
-En esta carpeta activamos "Turn on Module Logging" (En la lista de modulos escribimos * para incluir todos los comandos de powershell)
-Tambien activamos "Turn on PowerShell Script Block Logging"
+**Computer Configuration → Policies → Administrative Templates → Windows Components → Windows PowerShell**
 
------------------------------------------------------------------------
-3. Enable Audit Policies
+![Políticas de Windows PowerShell](images/gpo/03_powershell_politicas.png)
 
-Aqui vamos a Computer Configuration > Policies > Windows Settings > Security Settings > Advanced Audit Policy > Audit Policies
+- **Turn on Module Logging** → **Enabled**. En *Module Names → Show...* escribir `*` para registrar todos los módulos.
 
-Aqui activamos las siguientes politicas
+  ![Module Logging habilitado](images/gpo/04_module_logging.png)
 
-Logon/Logoff
-  - Audit Logon
-  - Audit Logoff
-  - Audit Special Logon
-  - Audit Other Logon/Logoff Events
-Activamos Success y Failure
-These let you see:
-  - User logins
-  - Failed logins
-  - RDP logins
-  - Administrator logins
+  ![Module Names = *](images/gpo/05_module_names.png)
 
+- **Turn on PowerShell Script Block Logging** → **Enabled**.
 
-Account Logon
-  - Audit Credential Validation
-  - Audit Kerberos Authentication Service
-  - Audit Kerberos Service Ticket Operations
-  - Audit Other Account Logon Events
-Activamos Success y Failure
-Important for AD authentication monitoring.
+  ![Script Block Logging habilitado](images/gpo/06_script_block_logging.png)
 
+### 3. Políticas de auditoría
 
-Account Management
-  - Audit User Account Management
-  - Audit Security Group Management
-  - Audit Computer Account Management
-  - Audit Distribution Group Management
-  - Audit Other Account Management Events
-Activamos Success y Failure
-Lets you detect:
-  - New users
-  - Deleted users
-  - Password resets
-  - Users added to Domain Admins
+**Computer Configuration → Policies → Windows Settings → Security Settings → Advanced Audit Policy Configuration → Audit Policies**
 
+![Advanced Audit Policy](images/gpo/07_advanced_audit.png)
 
-Detailed Tracking:
-  - Audit Process Creation
-Adicionalmente, vamos a Computer Configuration > Policies > Administrative Templates > System > Audit Process Creation
-Aqui damos doble click en "Include command line in process creation events" y lo cambiamos a "enable"
-This causes Event ID 4688 to include command-line arguments. (Ex. powershell.exe -enc ... instead of only powershell.exe)
+En cada subcategoría de la tabla, marcar **Configure the following audit events** con **Success** y **Failure**:
 
+![Success y Failure](images/gpo/08_success_failure.png)
 
-Nos devolvemos a Computer Configuration > Policies > Windows Settings > Security Settings > Advanced Audit Policy > Audit Policies y activamos
+| Categoría | Subcategorías | Qué permite ver |
+| --------- | ------------- | --------------- |
+| **Logon/Logoff** | Audit Logon · Audit Logoff · Audit Special Logon · Audit Other Logon/Logoff Events | Inicios de sesión exitosos y fallidos, RDP, logins de administradores |
+| **Account Logon** | Audit Credential Validation · Audit Kerberos Authentication Service · Audit Kerberos Service Ticket Operations · Audit Other Account Logon Events | Monitoreo de la autenticación en AD |
+| **Account Management** | Audit User Account Management · Audit Security Group Management · Audit Computer Account Management · Audit Distribution Group Management · Audit Other Account Management Events | Usuarios creados o borrados, cambios de contraseña, usuarios agregados a Domain Admins |
+| **Detailed Tracking** | Audit Process Creation | Creación de procesos (Event ID 4688) |
+| **Policy Change** | Audit Audit Policy Change · Audit Authentication Policy Change · Audit Authorization Policy Change | Manipulación de la configuración de seguridad |
+| **Privilege Use** | Audit Sensitive Privilege Use | Abuso de privilegios poderosos |
+| **Object Access** (mínimo) | Audit File Share · Audit Detailed File Share | Acceso a recursos compartidos (útil cuando haya file servers) |
 
-Policy Change
-  - Audit Audit Policy Change
-  - Audit Authentication Policy Change
-  - Audit Authorization Policy Change
-Activamos Success y Failure
-Lets you detect tampering with security settings.
+![Logon/Logoff](images/gpo/09_logon_logoff.png)
 
+![Account Logon](images/gpo/10_account_logon.png)
 
-Privilege Use
-  - Audit Sensitive Privilege Use
-Activamos Success y Failure
-This helps detect abuse of powerful privileges.
+![Account Management](images/gpo/11_account_management.png)
 
+![Detailed Tracking](images/gpo/12_detailed_tracking.png)
 
-Object Access (Minimal) - Don't enable everything here yet.
-  - Audit File Share
-  - Audit Detailed File Share
-Activamos Success y Failure
-Useful when you later deploy file servers.
+![Policy Change](images/gpo/15_policy_change.png)
 
------------------------------------------------------------------------
-Evitar estas configuraciones por ahora:
-  - Audit File System
-  - Audit Registry
-  - Audit Kernel Object
-  - Audit Handle Manipulation
-  - Audit Removable Storage
-  - Audit Filtering Platform Packet Drop
-  - Audit Filtering Platform Connection
-Pueden generar un volumen muy grande de logs y es mejor introducirlos despues
------------------------------------------------------------------------
+![Object Access](images/gpo/16_object_access.png)
 
+#### Incluir la línea de comandos en los eventos de creación de procesos
 
------------------------------------------------------------------------
-DC Baseline GPO
------------------------------------------------------------------------
-Para el controlador de dominio linkeamos la GPO a la OU que se crea por default en corp.lab
+**Computer Configuration → Policies → Administrative Templates → System → Audit Process Creation** → **Include command line in process creation events** → **Enabled**.
 
+Así el Event ID 4688 incluye los argumentos (por ejemplo `powershell.exe -enc ...` en lugar de solo `powershell.exe`).
 
-Entramos a Tools > Group Policy Management
+![Audit Process Creation](images/gpo/13_audit_process_creation.png)
 
-Navegamos a Forest > Domains > corp.lab > Domain Controllers
+![Include command line habilitado](images/gpo/14_command_line_enabled.png)
 
-Damos click derecho sobre la carpeta Domain Controllers y damos en "Create a GPO in this domain, and Link it here" y la llamamos "DC Baseline"
+> ⚠️ Con esta opción, cualquier usuario que pueda leer el log de seguridad verá los argumentos de los comandos, que a veces incluyen datos sensibles.
 
+#### Evitar por ahora
 
+Estas subcategorías generan un volumen de logs muy alto; es mejor introducirlas más adelante y de forma controlada:
 
-Click derecho sobre "DC Baseline" y damos en "Edit" para configurar las politicas:
+- Audit File System
+- Audit Registry
+- Audit Kernel Object
+- Audit Handle Manipulation
+- Audit Removable Storage
+- Audit Filtering Platform Packet Drop
+- Audit Filtering Platform Connection
 
-Las cosas que configuraremos seran:
-  1. Disable LLMNR
-  2. DC-Specific Auditing
-  3. PowerShell Logging
-  4. Process Command Line Logging
+---
 
+## DC Baseline
 
------------------------------------------------------------------------
-1. Disable LLMNR
+Para el controlador de dominio se usa la OU **Domain Controllers** que Windows crea por defecto en la raíz de `corp.lab`.
 
-Misma configuracion de la Workstation Baseline
+1. **Tools → Group Policy Management → Forest → Domains → corp.lab → Domain Controllers**.
+2. Clic derecho → **Create a GPO in this domain, and Link it here...** → nombre: `DC Baseline`.
 
------------------------------------------------------------------------
-2. DC-Specific Auditing
+   ![Nueva GPO DC Baseline](images/gpo/17_nueva_gpo_dc.png)
 
-Vamos a Computer Configuration > Policies > Windows Settings > Security Settings > Advanced Audit Policy > Audit Policies
+   > ⚠️ Verificar que la GPO quede vinculada a la OU `Domain Controllers` de la **raíz del dominio** (donde está el objeto `ADDC01`) y no a una OU con el mismo nombre dentro de `Corp`. Si se vincula a una OU vacía, la política no se aplica al DC. Microsoft no recomienda mover los controladores de dominio fuera de su OU por defecto.
 
-Habilitamos las mismas politicas que la Workstation Baseline y configuramos estas nuevas
+3. Clic derecho → **Edit** y configurar:
 
-- Directory Service Changes (DS Access)
-- Directory Service Access (DS Access)
-- User Account Management (Account Management)
-- Security Group Management (Account Management)
+| # | Configuración | Detalle |
+| - | ------------- | ------- |
+| 1 | Desactivar LLMNR | Igual que en la [Workstation Baseline](#1-desactivar-llmnr) |
+| 2 | Auditoría específica de DC | Las mismas políticas de la Workstation Baseline, más las de abajo |
+| 3 | Registro de PowerShell | Igual que en la [Workstation Baseline](#2-registro-de-powershell) |
+| 4 | Línea de comandos en eventos de procesos | **Administrative Templates → System → Audit Process Creation → Include command line in process creation events** |
 
------------------------------------------------------------------------
-3. PowerShell Logging
+**Auditoría adicional para el DC** (Success y Failure):
 
-Misma configuracion de la Workstation Baseline
+| Categoría | Subcategoría |
+| --------- | ------------ |
+| DS Access | Directory Service Changes |
+| DS Access | Directory Service Access |
+| Account Management | User Account Management |
+| Account Management | Security Group Management |
 
------------------------------------------------------------------------
-4. Process Command Line Logging
+---
 
-Vamos a Computer Configuration > Administrative Templates > System > Audit Process Creation y activamos "Include command line in process creation events"
+## Aplicar y verificar
 
------------------------------------------------------------------------
+### Forzar la actualización de políticas
 
-Ahora toca aplicar las politicas.
+En **ADDC01** (PowerShell como administrador) y en **WIN11-01**:
 
+```powershell
+gpupdate /force
+```
 
-en el ADDC01 abrimos PowerShell como administrador
+Resultado esperado: `Computer Policy update has completed successfully.`
 
-corremos el comando:
-  gpupdate /force
+![gpupdate en ADDC01](images/gpo/18_gpupdate_dc.png)
 
-Deberia aparecer 
-  Computer Policy update has completed successfully.
+![gpupdate en WIN11-01](images/gpo/19_gpupdate_win11.png)
 
+### Confirmar qué GPO se aplicaron
 
-En el WIN11-01
-Abrimos powershell normal
-
-corremos el comando:
-  gpupdate /force
-
-Deberia aparecer 
-  Computer Policy update has completed successfully.
-
-
------------------------------------------------------------------------
-
-Para verificar que las politicas se aplicaron de forma correcta corremos el siguiente comando en ambas VMs:
-
+```powershell
 gpresult /scope computer /r
+```
 
-En la Workstation deberia aparecer 
-COMPUTER SETTINGS
-Applied Group Policy Objects
-- Workstation Baseline
-- Default Domain Policy
+| Equipo | *Applied Group Policy Objects* esperados |
+| ------ | ---------------------------------------- |
+| WIN11-01 | `Workstation Baseline`, `Default Domain Policy` |
+| ADDC01 | `DC Baseline`, `Default Domain Controllers Policy` |
 
-En el Domain Controller deberia aparecer
-Applied Group Policy Objects
-----------------------------
-DC Baseline
-Default Domain Controllers Policy
+### Pruebas puntuales
 
+**LLMNR desactivado**
 
+```powershell
+Get-ItemProperty "HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\DNSClient"
+```
 
-----------------------------------------------------------------------------
+Buscar `EnableMulticast : 0`.
 
-Unos comando adicionales para verificar que las politicas se estan aplicando correctamente son:
+**Registro de PowerShell**
 
-En powershell:
+```powershell
+Get-Process
+Get-WinEvent -LogName "Microsoft-Windows-PowerShell/Operational" -MaxEvents 20
+```
 
-Check LLMNR
-  Get-ItemProperty "HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\DNSClient"
+Si aparecen eventos, el Module Logging / Script Block Logging funciona.
 
-Buscar en el output: EnableMulticast = 0
-Esto significa que LLMNR esta desactivado
+**Auditoría de creación de procesos**
 
+```cmd
+notepad.exe
+```
 
-Check PowerShell Logging
-  Get-Process
-Y despues correr
-  Get-WinEvent -LogName "Microsoft-Windows-PowerShell/Operational" -MaxEvents 20
+```powershell
+Get-WinEvent -FilterHashtable @{LogName='Security'; Id=4688} -MaxEvents 10
+```
 
-Si hay eventos, entonces el Script Block Logging / Module Logging esta funcionando
+Si aparece el Event ID 4688, la auditoría de procesos funciona.
 
+---
 
+## Siguientes pasos
 
-Check Process Creation Auditing
-En cmd
-  notepad.exe
+- 📸 Snapshot de pfSense, ADDC01, WIN11-01 y Bastion01: **"VM__Pre_Sysmon_Wazuh"**
+- [Desplegar Sysmon](Deploy_Sysmon_Checho.md)
+- [Montar Wazuh e instalar los agentes](WazuhServer_Checho.md)
+- Verificar la telemetría
+- Endurecer más el DC
+- Montar la VM de ataque y generar detecciones
+- Integrar Linux con AD
+- Agregar AD CS
 
-Despues, en powershell:
-  Get-WinEvent -FilterHashtable @{LogName='Security';Id=4688} -MaxEvents 10
-
-Si se ve el event ID 4688, process auditing esta funcionando.
-
-----------------------------------------------------------------------------
-
-Lo siguiente que haremos sera
-
-- Snapshot pfSense, ADDC01, WIN11-01, Bastion01 (VM__Pre_Sysmon_Wazuh)
-- Deploy Sysmon.
-- Build Wazuh.
-- Install Wazuh agents.
-- Verify telemetry.
-- Harden DC further.
-- Build attack VM.
-- Generate detections.
-- Add Linux AD integration.
-- Add AD CS.
+[⬅️ Anterior: Workstation Windows 11](Win11_User_Checho.md) · [Volver al README](README.md) · [Siguiente: Sysmon ➡️](Deploy_Sysmon_Checho.md)

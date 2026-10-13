@@ -1,115 +1,174 @@
-Para esto abrimos ADDC01 y descargamos Sysmon y el archivo de configuracion de nuestra preferencia
+# 6. Despliegue de Sysmon
 
-En mi caso usaré el archivo SwiftOnSecurity Sysmon Config
+[⬅️ Anterior: GPOs de seguridad](SecurityBaselineGPOs_Checho.md) · [Volver al README](README.md) · [Siguiente: Wazuh ➡️](WazuhServer_Checho.md)
 
-Sysmon: https://learn.microsoft.com/es-es/sysinternals/downloads/sysmon
-Config: https://github.com/SwiftOnSecurity/sysmon-config
+**Sysmon** (*System Monitor*, de Sysinternals) registra actividad detallada de Windows —creación de procesos, conexiones de red, consultas DNS, archivos creados, cambios en el registro— que luego se envía a Wazuh para crear detecciones.
 
-Otra configuracion recomendada por Microsoft es la config Sysmon-modular: https://github.com/olafhartong/sysmon-modular
-Estas configuraciones se sacaron de: https://learn.microsoft.com/es-es/windows/security/operating-system-security/sysmon/how-to-enable-sysmon
+Primero se instala manualmente en `ADDC01` y `WIN11-01`; después se automatiza para cualquier equipo nuevo mediante una GPO.
 
-Sysmon es un zip con 4 archivos (Sysmon.exe, Sysmon64.exe, Sysmon64a.exe, Eula.txt) que descomprimimos y la configuracion es un archivo .xml (sysmonconfig-export.xml)
+## Contenido
 
-Ahora creamos una carpeta C:\Sysmon y copiamos los archivos Sysmon64.exe (de la carpeta descomprimida) y sysmonconfig-export.xml
+- [Descargas](#descargas)
+- [Instalación manual](#instalación-manual)
+- [Event IDs importantes](#event-ids-importantes)
+- [Despliegue automático por Group Policy](#despliegue-automático-por-group-policy)
 
-Abrimos Powershell como administrador y entramos a la carpeta C:\Sysmon (cd C:\Sysmon)
+## Descargas
 
-Aqui corremos el comando: .\Sysmon64.exe -accepteula -i .\sysmonconfig-export.xml
-Deberia aparecer un texto asi:
-  Loading configuration file...
-  Configuration validated.
-  Sysmon64 installed.
-  SysmonDrv installed.
-  Starting Sysmon...
-  Sysmon started.
+| Recurso | Enlace |
+| ------- | ------ |
+| Sysmon | <https://learn.microsoft.com/es-es/sysinternals/downloads/sysmon> |
+| Configuración usada: SwiftOnSecurity | <https://github.com/SwiftOnSecurity/sysmon-config> |
+| Alternativa: sysmon-modular (Olaf Hartong) | <https://github.com/olafhartong/sysmon-modular> |
 
-Ahora, para verificar que se haya instalado correctamente corremos el comando: Get-Service Sysmon64
+Ambas configuraciones aparecen recomendadas en la [documentación de Microsoft](https://learn.microsoft.com/es-es/windows/security/operating-system-security/sysmon/how-to-enable-sysmon).
 
-Deberia aparecer: Status : Running
+Sysmon se descarga como un `.zip` con `Sysmon.exe`, `Sysmon64.exe`, `Sysmon64a.exe` y `Eula.txt`. La configuración de SwiftOnSecurity es un único archivo `sysmonconfig-export.xml`.
 
-Para verificar la configuracion corremos: .\Sysmon64.exe -c
-Esto muestra la configuracion activa
+---
 
-Verificamos que se esten generando Logs
-  1. En el "Event Viewer" vamos a Applications and Services Logs > Microsoft > Windows > Sysmon > Operational
-  2. Correr el siguiente comando en Powershell: Get-WinEvent -LogName "Microsoft-Windows-Sysmon/Operational" -MaxEvents 10
+## Instalación manual
 
+### 1. Preparar la carpeta
 
-Por ultimo generamos eventos que se deberian loggear y verificamos los ultimos eventos de Sysmon
+Crear `C:\Sysmon` y copiar ahí `Sysmon64.exe` y `sysmonconfig-export.xml`.
 
-  notepad.exe
-  Get-Date
-  ping 8.8.8.8
+![Carpeta C:\Sysmon](images/sysmon/01_carpeta_sysmon.png)
 
-Y para verificar en powershell:
-  Get-WinEvent -LogName "Microsoft-Windows-Sysmon/Operational" -MaxEvents 20 | Select-Object Id, TimeCreated, Message
+### 2. Instalar
 
-Este mismo proceso lo usamos para desplegar sysmon en WIN11-01
+En PowerShell como administrador:
 
-------------------------------------------------------------------------------------------------------------------
-Learn the important Event IDs
-You'll use these frequently when creating detections in Wazuh.
+```powershell
+cd C:\Sysmon
+.\Sysmon64.exe -accepteula -i .\sysmonconfig-export.xml
+```
 
-Event ID	Description	Why it matters
-1	Process Creation	Detect malware execution, PowerShell, LOLBins
-3	Network Connection	Detect outbound C2 and suspicious connections
-5	Process Terminated	Useful for process lifecycle analysis
-7	Image Loaded	DLL injection and suspicious modules
-8	CreateRemoteThread	Code injection techniques
-10	Process Access	Credential theft (e.g., LSASS access)
-11	File Create	Malware dropping files
-12–14	Registry Events	Persistence mechanisms
-22	DNS Query	Domain lookups by processes
+Salida esperada:
 
+```text
+Configuration file validated.
+Sysmon64 installed.
+SysmonDrv installed.
+Starting SysmonDrv.
+SysmonDrv started.
+Starting Sysmon64..
+Sysmon64 started.
+```
 
-------------------------------------------------------------------------------------------------------------------
-Siguiente paso, Desplegar por medio de Group Policy
+![Instalación de Sysmon](images/sysmon/02_instalacion.png)
 
-La idea es simular el despliegue automatico de las empresas para sysmon en nuevos equipos que entren al dominio
+### 3. Verificar el servicio y la configuración
 
-El deployment funcionara asi
+```powershell
+Get-Service Sysmon64      # Status: Running
+.\Sysmon64.exe -c         # muestra la configuración activa
+```
 
+![Servicio y configuración](images/sysmon/03_servicio_y_config.png)
+
+### 4. Verificar que se generan logs
+
+- **Event Viewer → Applications and Services Logs → Microsoft → Windows → Sysmon → Operational**, o
+- PowerShell:
+
+  ```powershell
+  Get-WinEvent -LogName "Microsoft-Windows-Sysmon/Operational" -MaxEvents 10
+  ```
+
+![Eventos en PowerShell](images/sysmon/04_eventos_powershell.png)
+
+![Eventos en el Event Viewer](images/sysmon/05_event_viewer.png)
+
+### 5. Generar eventos de prueba
+
+```powershell
+notepad.exe
+Get-Date
+ping 8.8.8.8
+
+Get-WinEvent -LogName "Microsoft-Windows-Sysmon/Operational" -MaxEvents 20 |
+  Select-Object Id, TimeCreated, Message
+```
+
+![Generar actividad](images/sysmon/06_generar_eventos.png)
+
+![Eventos generados (Process Create, DNS query, File created)](images/sysmon/07_eventos_generados.png)
+
+Repetir el mismo proceso en `WIN11-01`:
+
+![Instalación en WIN11-01](images/sysmon/08_instalacion_win11.png)
+
+---
+
+## Event IDs importantes
+
+Se usan constantemente al crear detecciones en Wazuh:
+
+| Event ID | Descripción | Por qué importa |
+| -------- | ----------- | --------------- |
+| 1 | Process Creation | Ejecución de malware, PowerShell, LOLBins |
+| 3 | Network Connection | Conexiones salientes sospechosas y C2 |
+| 5 | Process Terminated | Análisis del ciclo de vida de procesos |
+| 7 | Image Loaded | Inyección de DLL y módulos sospechosos |
+| 8 | CreateRemoteThread | Técnicas de inyección de código |
+| 10 | Process Access | Robo de credenciales (p. ej. acceso a LSASS) |
+| 11 | File Create | Malware que deja archivos en disco |
+| 12–14 | Registry Events | Mecanismos de persistencia |
+| 22 | DNS Query | Dominios consultados por cada proceso |
+
+---
+
+## Despliegue automático por Group Policy
+
+La idea es simular cómo las empresas instalan Sysmon automáticamente en cada equipo nuevo que entra al dominio:
+
+```text
 ADDC01
 │
 ├── SYSVOL
-│   └── Sysmon
+│   └── scripts\Sysmon
 │       ├── Sysmon64.exe
-│       ├── sysmonconfig.xml
+│       ├── sysmonconfig-export.xml
 │       └── install_sysmon.cmd
 │
-└── GPO
+└── GPO "Workstation Baseline"
       │
-      └── Startup Script
-              │
-              ▼
-Every domain computer
-
-
-Los pasos a seguir son:
-  1. Crear una carpeta compartida en SYSVOL
-  2. Crear un script de instalacion
-  3. Editar la GPO Workstation Baseline
-  4. Seleccionar el script
-  5. Actualizar Group Policy
-  6. Verificar instalacion
-  7. Testear con nueva workstation
-
-
-------------------------------------------------------------------------------------------------------------------
-1. Crear una carpeta compartida en SYSVOL
-
-En ADDC01 vamos a C:\Windows\SYSVOL\sysvol\corp.lab\scripts y creamos una carpeta "Sysmon"
-
-Aqui copiamos los archivos Sysmon64.exe, sysmonconfig-export.xml
-
-Usamos la carpeta SYSVOL porque esta es visible y legible para todos los equipos dentro del dominio por default
-
-------------------------------------------------------------------------------------------------------------------
-2. Crear un script de instalacion
-
-Abrimos notepad y escribimos el script
-
+      └── Startup Script ──► se ejecuta al arrancar cada equipo de la OU Workstations
 ```
+
+Pasos:
+
+1. [Crear la carpeta compartida en SYSVOL](#1-crear-la-carpeta-en-sysvol)
+2. [Crear el script de instalación](#2-crear-el-script-de-instalación)
+3. [Agregar el script a la GPO Workstation Baseline](#3-agregar-el-script-a-la-gpo)
+4. [Actualizar Group Policy](#4-actualizar-group-policy)
+5. [Verificar la instalación](#5-verificar-la-instalación)
+6. [Probar con una workstation nueva](#6-probar-con-una-workstation-nueva)
+
+### 1. Crear la carpeta en SYSVOL
+
+En `ADDC01`, crear la carpeta `Sysmon` en:
+
+```text
+C:\Windows\SYSVOL\sysvol\corp.lab\scripts\
+```
+
+y copiar ahí `Sysmon64.exe` y `sysmonconfig-export.xml`.
+
+Se usa SYSVOL porque, por defecto, todos los equipos del dominio pueden leerlo.
+
+![Carpeta Sysmon en SYSVOL](images/sysmon/09_carpeta_sysvol.png)
+
+![Archivos en la carpeta](images/sysmon/10_archivos_sysvol.png)
+
+### 2. Crear el script de instalación
+
+Crear con el Bloc de notas un archivo `install_sysmon.cmd` (la extensión **debe** ser `.cmd`) **en la misma carpeta** `scripts\Sysmon`. `%~dp0` se expande a la carpeta donde está el script, por eso el `.exe` y el `.xml` deben estar junto a él.
+
+**Versión básica:** instala Sysmon solo si no está instalado.
+
+```bat
 @echo off
 
 if exist "C:\Windows\Sysmon64.exe" (
@@ -121,15 +180,12 @@ copy "%~dp0Sysmon64.exe" "C:\Windows\Sysmon64.exe"
 
 "C:\Windows\Sysmon64.exe" -accepteula -i "%~dp0sysmonconfig-export.xml"
 ```
-y lo guardamos como install_sysmon.cmd
 
-Importante que la extension sea .cmd
+![Script básico](images/sysmon/11_script_basico.png)
 
-Este script revisa si Sysmon.exe ya está instalado, y en caso de que no lo este, lo instala con la configuracion de la carpeta compartida.
+**Versión que también actualiza la configuración** si Sysmon ya está instalado:
 
-Se puede usar un script parecido para actualizar la configuracion en caso de que ya este instalado.
-
-```
+```bat
 @echo off
 
 if exist "C:\Windows\Sysmon64.exe" (
@@ -140,9 +196,9 @@ if exist "C:\Windows\Sysmon64.exe" (
 )
 ```
 
-O asi
+**Versión mejorada** (la usada en el laboratorio):
 
-```
+```bat
 @echo off
 setlocal
 
@@ -163,84 +219,87 @@ if exist "%DESTINO_EXE%" (
 )
 
 endlocal
-pause
-
 ```
-Este codigo mejora en estos aspectos:
-  1. Uso de variables: Centraliza las rutas al inicio (ORIGEN_EXE, DESTINO_EXE, etc.) para que el código sea más corto, limpio y fácil de modificar en el futuro.
-  2. Mensajes en pantalla (echo): Agrega textos informativos para que sepas exactamente qué camino tomó el script al ejecutarse.
-  3. Comandos de control: setlocal y endlocal aseguran que las variables creadas no afecten a otras ventanas de CMD de tu sistema. pause evita que la ventana se cierre de golpe al terminar para que puedas ver el resultado.
 
-------------------------------------------------------------------------------------------------------------------
-3. Editar la GPO Workstation Baseline
+Mejoras de esta versión:
 
-En el Group Policy Management buscamos la Workstation Baseline que creamos anteriormente.
+1. **Variables:** las rutas se definen una sola vez al inicio, así el código es más corto y fácil de modificar.
+2. **Mensajes (`echo`):** indican qué camino tomó el script.
+3. **`setlocal` / `endlocal`:** las variables no afectan a otras ventanas de CMD.
 
-La editamos y vamos a Computer Configuration > Policies > Windows Settings > Scripts (Startup/Shutdown) > Startup
+![Script mejorado](images/sysmon/12_script_mejorado.png)
 
-Doble click y damos en "Show Files"
+> ⚠️ **No usar `pause` en un script de inicio.** Los scripts de inicio de GPO se ejecutan sin ventana visible: un `pause` deja el script esperando una tecla que nadie va a presionar y retrasa el arranque hasta que se agota el tiempo de espera. Úsalo solo al probar el script manualmente.
+>
+> 💡 `copy ... /Y` sobre `C:\Windows\Sysmon64.exe` puede fallar si el servicio está en ejecución (el archivo está en uso). Para actualizar la **versión** de Sysmon hay que desinstalar (`Sysmon64.exe -u`) y reinstalar; para cambiar solo la **configuración** basta con `-c`.
 
-En esta ventana se abre la carpeta de scripts de la GPO. Aqui pegamos el script que acabamos de crear
+### 3. Agregar el script a la GPO
 
-Despues de pegar el archivo, cerramos la ventana y damos click en "Add"
+1. En **Group Policy Management**, editar la GPO `Workstation Baseline`.
+2. Ir a **Computer Configuration → Policies → Windows Settings → Scripts (Startup/Shutdown) → Startup** y hacer doble clic.
+3. Clic en **Add...** → **Browse...**
 
-------------------------------------------------------------------------------------------------------------------
-4. Seleccionar el script
+   ![Agregar un script](images/sysmon/13_agregar_script.png)
 
-Damos en "Browse" y nos llevara a la carpeta de scripts donde pegamos el script, aqui seleccionamos nuestro scipt y aparecera en el script name algo asi 
+4. Seleccionar el script de la carpeta de SYSVOL. La ruta debe quedar así:
 
-```
-\\corp.lab\SYSVOL\corp.lab\scripts\Sysmon\install_sysmon.cmd
-```
-------------------------------------------------------------------------------------------------------------------
-5. Actualizar Group Policy
+   ```text
+   \\corp.lab\SYSVOL\corp.lab\scripts\Sysmon\install_sysmon.cmd
+   ```
 
-En el equipo WIN11-01 corremos los siguientes comandos
+   ![Ruta del script](images/sysmon/15_ruta_script.png)
 
-```
+> 💡 El botón **Show Files** abre la carpeta de scripts propia de la GPO (`...\Machine\Scripts\Startup`). No hace falta copiar el script ahí: si se ejecutara desde esa carpeta, `%~dp0` apuntaría a ella y no encontraría `Sysmon64.exe` ni el `.xml`. Lo importante es que la ruta configurada sea la de `scripts\Sysmon`.
+>
+> ![Carpeta Startup de la GPO](images/sysmon/14_carpeta_startup_gpo.png)
+
+### 4. Actualizar Group Policy
+
+En `WIN11-01`:
+
+```cmd
 gpupdate /force
 shutdown /r /t 0
 ```
 
-Esto reincia el computador despues de actualizar las politicas
+Los scripts de inicio se ejecutan al arrancar, por eso es necesario reiniciar.
 
-------------------------------------------------------------------------------------------------------------------
-6. Verificar instalacion
+### 5. Verificar la instalación
 
-Despues de reinciar corremos los comandos en powershell
-
-```
-Get-Service Sysmon64
-```
-Y deberia mostrar:
-```
-Status : Running
-```
-
-Y el comando:
-```
+```powershell
+Get-Service Sysmon64          # Status: Running
 Get-WinEvent -LogName "Microsoft-Windows-Sysmon/Operational" -MaxEvents 10
 ```
-Que deberia mostrar eventos
 
-------------------------------------------------------------------------------------------------------------------
-7. Testear con nueva workstation
+![Servicio en WIN11-01](images/sysmon/16_servicio_win11_gpo.png)
 
-Finalmente montamos otra workstation y
-  1. La unimos al dominio
-  2. Movemos la workstation a la OU de Workstations
-  3. Reiniciamos la maquina
-  4. Verificamos la instalacion (como en el punto anterior)
+![Eventos en WIN11-01](images/sysmon/17_eventos_win11_gpo.png)
 
-The startup script should automatically install Sysmon without you logging on or manually copying files.
+### 6. Probar con una workstation nueva
 
-------------------------------------------------------------------------------------------------------------------
-Siguientes pasos:
-  - Build Wazuh.
-  - Install Wazuh agents.
-  - Verify telemetry.
-  - Harden DC further.
-  - Build attack VM.
-  - Generate detections.
-  - Add Linux AD integration.
-  - Add AD CS.
+1. Montar otra workstation (`WIN11-02`) y unirla al dominio.
+2. Moverla de `Computers` a la OU `Workstations`.
+
+   ![WIN11-02 en Computers](images/sysmon/18_win11_02_computers.png)
+
+   ![WIN11-02 en Workstations](images/sysmon/19_win11_02_workstations.png)
+
+3. Reiniciarla.
+4. Verificar como en el paso anterior.
+
+   ![Sysmon instalado automáticamente en WIN11-02](images/sysmon/20_win11_02_sysmon.png)
+
+✅ El script de inicio instala Sysmon automáticamente, sin iniciar sesión ni copiar archivos a mano.
+
+---
+
+## Siguientes pasos
+
+- [Montar Wazuh e instalar los agentes](WazuhServer_Checho.md)
+- Verificar la telemetría
+- Endurecer más el DC
+- Montar la VM de ataque y generar detecciones
+- Integrar Linux con AD
+- Agregar AD CS
+
+[⬅️ Anterior: GPOs de seguridad](SecurityBaselineGPOs_Checho.md) · [Volver al README](README.md) · [Siguiente: Wazuh ➡️](WazuhServer_Checho.md)
