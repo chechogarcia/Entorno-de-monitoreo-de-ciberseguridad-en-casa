@@ -1,110 +1,110 @@
-# 1. Firewall pfSense
+# 1. pfSense Firewall
 
-[⬅️ Volver al README](README.md) · [Siguiente: Bastion Host ➡️](DebianBastionHost_Checho.md)
+[⬅️ Back to README](README.md) · [Next: Bastion Host ➡️](DebianBastionHost_Checho.md)
 
-pfSense es el punto central del laboratorio: separa todas las subredes y decide qué tráfico pasa entre ellas y hacia Internet. Esta guía cubre la instalación en VMware Workstation y la configuración inicial de las interfaces WAN y LAN.
+pfSense is the core of the lab: it separates every subnet and decides which traffic can move between them and out to the Internet. This guide covers installing it on VMware Workstation and the initial WAN and LAN setup.
 
-> 🎥 Video guía de referencia: <https://www.youtube.com/watch?v=p09ggIHt2j4>
+> 🎥 Reference video: <https://www.youtube.com/watch?v=p09ggIHt2j4>
 
-## Requisitos
+## Requirements
 
-| Recurso | Valor |
-| ------- | ----- |
-| Hipervisor | VMware Workstation |
+| Resource | Value |
+| -------- | ----- |
+| Hypervisor | VMware Workstation |
 | ISO | pfSense Community Edition (<https://www.pfsense.org/download/>) |
-| vCPU | 2 (mínimo) |
+| vCPU | 2 (minimum) |
 | RAM | 4 GB |
-| Adaptadores de red | 2 (WAN + LAN) |
+| Network adapters | 2 (WAN + LAN) |
 
 ---
 
-## Instalación
+## Installation
 
-### 1. Descargar la ISO
+### 1. Download the ISO
 
-Descargar la imagen ISO desde <https://www.pfsense.org/download/>.
+Download the ISO image from <https://www.pfsense.org/download/>.
 
-### 2. Crear la máquina virtual
+### 2. Create the virtual machine
 
-Crear una nueva VM en VMware usando la ISO de pfSense.
+Create a new VM in VMware using the pfSense ISO.
 
-![Creación de la VM con la ISO de pfSense](images/Creacion_Maquina_virtual_pfSense_ISO.png)
+![Creating the VM with the pfSense ISO](images/Creacion_Maquina_virtual_pfSense_ISO.png)
 
-### 3. Crear la red interna en el Virtual Network Editor
+### 3. Create the internal network in the Virtual Network Editor
 
-Abrir el **Virtual Network Editor** como administrador y crear una red nueva:
+Open the **Virtual Network Editor** as administrator and create a new network:
 
-- Tipo: **Host-only**.
-- **DHCP desactivado**, para que las direcciones las asigne el firewall y no VMware.
+- Type: **Host-only**.
+- **DHCP disabled**, so that addresses are handed out by the firewall rather than by VMware.
 
-![Configuración del Virtual Network Editor](images/Virtual_Network_Editor_config.png)
+![Virtual Network Editor configuration](images/Virtual_Network_Editor_config.png)
 
-### 4. Configurar los adaptadores de red de la VM
+### 4. Configure the VM's network adapters
 
-Antes de encender la VM, agregar un segundo adaptador de red y asignar 2 procesadores y 4 GB de RAM.
+Before powering on the VM, add a second network adapter and assign 2 processors and 4 GB of RAM.
 
-- **Adaptador 1 (WAN):** tipo de conexión **Bridged**.
+- **Adapter 1 (WAN):** connection type **Bridged**.
 
-  ![Adaptador 1 - WAN en modo Bridged](images/pfSense_VM_settings_network_adapter_1.png)
+  ![Adapter 1 - WAN in Bridged mode](images/pfSense_VM_settings_network_adapter_1.png)
 
-- **Adaptador 2 (LAN):** tipo de conexión **Custom**, seleccionando la red virtual creada en el paso 3 (en este caso **VMnet2**).
+- **Adapter 2 (LAN):** connection type **Custom**, selecting the virtual network created in step 3 (in this case **VMnet2**).
 
-  ![Adaptador 2 - LAN en VMnet2](images/pfSense_VM_settings_network_adapter_2.png)
+  ![Adapter 2 - LAN on VMnet2](images/pfSense_VM_settings_network_adapter_2.png)
 
-### 5. Instalar pfSense
+### 5. Install pfSense
 
-Encender la VM y seguir el instalador. Al asignar interfaces, verificar que:
+Power on the VM and follow the installer. When assigning interfaces, make sure that:
 
-- La interfaz conectada a **VMnet0** (Bridged) quede como **WAN**.
-- La interfaz conectada a **VMnet2** quede como **LAN**.
+- The interface connected to **VMnet0** (Bridged) is assigned as **WAN**.
+- The interface connected to **VMnet2** is assigned as **LAN**.
 
-### 6. Validar la asignación de interfaces
+### 6. Validate the interface assignment
 
-Al terminar, la consola muestra las IP asignadas a cada interfaz:
+When it finishes, the console shows the IP assigned to each interface:
 
-![Validación de las interfaces WAN y LAN](images/Validacion_config_interfaces.png)
+![Validating the WAN and LAN interfaces](images/Validacion_config_interfaces.png)
 
-### 7. Probar la conexión a Internet
+### 7. Test Internet connectivity
 
-Desde la consola de pfSense (opción `7) Ping host`) o desde la shell:
+From the pfSense console (option `7) Ping host`) or from the shell:
 
 ```sh
 ping 8.8.8.8
 ```
 
-![Prueba de conectividad](images/prueba_conexion.png)
+![Connectivity test](images/prueba_conexion.png)
 
 ---
 
-## Solución de problemas: VMs sin conectividad hasta reiniciar el firewall
+## Troubleshooting: VMs lose connectivity until the firewall reboots
 
-**Síntoma:** las máquinas virtuales conectadas al firewall perdían conectividad y solo se recuperaban al reiniciar pfSense.
+**Symptom:** VMs connected to the firewall lost connectivity and only recovered after pfSense was restarted.
 
-**Solución:** cambiar el tipo de adaptador virtual de las interfaces a `vmxnet3`, que tiene mejor soporte en FreeBSD.
+**Fix:** change the virtual adapter type of the interfaces to `vmxnet3`, which has better support in FreeBSD.
 
-1. Apagar la VM de pfSense.
-2. Abrir con un editor de texto el archivo de configuración de la VM (en este caso `pfSense Firewall.vmx`), ubicado en la carpeta donde está guardada la VM.
-3. Buscar todas las líneas con esta forma:
+1. Shut down the pfSense VM.
+2. Open the VM's configuration file in a text editor (in this case `pfSense Firewall.vmx`), located in the folder where the VM is stored.
+3. Find every line like this:
 
    ```ini
    ethernet0.virtualDev = "e1000"
    ```
 
-   (también pueden aparecer como `"vlance"`) y cambiar el valor por:
+   (it may also appear as `"vlance"`) and change the value to:
 
    ```ini
    ethernet0.virtualDev = "vmxnet3"
    ```
 
-   Repetir para `ethernet1`, `ethernet2`, etc.
-4. Guardar y cerrar el archivo.
-5. Encender la VM y **reasignar las interfaces** desde la consola (opción `1) Assign Interfaces`), ya que cambian de nombre: de `em0`/`le0` pasan a `vmx0`, `vmx1`, etc.
+   Repeat for `ethernet1`, `ethernet2`, and so on.
+4. Save and close the file.
+5. Power on the VM and **reassign the interfaces** from the console (option `1) Assign Interfaces`), because their names change from `em0`/`le0` to `vmx0`, `vmx1`, etc.
 
 ---
 
-## Pendiente por documentar
+## Not yet documented
 
-- Creación de las interfaces adicionales (OPT1–OPT5) y asignación de sus IP para cada subred del laboratorio (ver la tabla de direccionamiento en el [README](README.md#direccionamiento)).
-- Acceso a la interfaz web de pfSense y cambio de la contraseña por defecto del usuario `admin`.
+- Creating the additional interfaces (OPT1–OPT5) and assigning their IPs for each lab subnet (see the addressing table in the [README](README.md#addressing)).
+- Accessing the pfSense web UI and changing the default `admin` password.
 
-[⬅️ Volver al README](README.md) · [Siguiente: Bastion Host ➡️](DebianBastionHost_Checho.md)
+[⬅️ Back to README](README.md) · [Next: Bastion Host ➡️](DebianBastionHost_Checho.md)
