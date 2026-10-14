@@ -1,6 +1,6 @@
 # 3. Active Directory (Windows Server 2022)
 
-[⬅️ Previous: Bastion Host](DebianBastionHost_Checho.md) · [Back to README](README.md) · [Next: Windows 11 Workstation ➡️](Win11_User_Checho.md)
+[⬅️ Previous: Bastion Host](DebianBastionHost.md) · [Back to README](README.md) · [Next: Windows 11 Workstation ➡️](Win11_User.md)
 
 Installing the `ADDC01` domain controller with the AD DS and DNS roles, creating the `corp.lab` forest, the Organizational Units (OUs) and the first users.
 
@@ -50,7 +50,7 @@ Installing the `ADDC01` domain controller with the AD DS and DNS roles, creating
 
 Set a static IP `10.0.20.10`, gateway `10.0.20.1` and, **temporarily**, DNS `8.8.8.8`:
 
-![Static IP with temporary DNS](images/ad/01_ip_estatica_dns_temporal.png)
+![Static IP with temporary DNS](images/ad/01_static_ip_temporary_dns.png)
 
 In pfSense (**Firewall → Rules → OPT1**), create rules so the Servers subnet can reach the Internet to install roles and updates:
 
@@ -61,7 +61,7 @@ In pfSense (**Firewall → Rules → OPT1**), create rules so the Servers subnet
 | Pass | TCP | OPT1 net | any | 443 (HTTPS) |
 | Pass | TCP/UDP | OPT1 net | any | 53 (DNS) |
 
-![Outbound rules on OPT1](images/ad/02_reglas_opt1_salida.png)
+![Outbound rules on OPT1](images/ad/02_opt1_outbound_rules.png)
 
 Test from `ADDC01`:
 
@@ -86,27 +86,27 @@ nslookup microsoft.com
 1. In **Server Manager → Manage → Add Roles and Features**, click *Next*.
 2. Choose **Role-based or feature-based installation**.
 
-   ![Installation type](images/ad/04_tipo_instalacion.png)
+   ![Installation type](images/ad/04_installation_type.png)
 
 3. Select the `ADDC01` server.
 
-   ![Destination server](images/ad/05_servidor_destino.png)
+   ![Destination server](images/ad/05_destination_server.png)
 
 4. Check **Active Directory Domain Services** and **DNS Server**. Each time you check a role, a window pops up: click **Add Features**.
 
-   ![AD DS role](images/ad/06_rol_adds.png)
+   ![AD DS role](images/ad/06_adds_role.png)
 
-   ![Features required by AD DS](images/ad/07_features_adds.png)
+   ![Features required by AD DS](images/ad/07_adds_features.png)
 
-   ![Features required by DNS](images/ad/08_features_dns.png)
+   ![Features required by DNS](images/ad/08_dns_features.png)
 
-   ![Both roles selected](images/ad/09_roles_seleccionados.png)
+   ![Both roles selected](images/ad/09_selected_roles.png)
 
 5. Click *Next* through to the confirmation page and click **Install**.
 
-   ![Installation confirmation](images/ad/10_confirmar_instalacion.png)
+   ![Installation confirmation](images/ad/10_confirm_installation.png)
 
-   ![Installation complete](images/ad/11_instalacion_completa.png)
+   ![Installation complete](images/ad/11_installation_complete.png)
 
 ---
 
@@ -114,22 +114,22 @@ nslookup microsoft.com
 
 1. Click the notifications flag in Server Manager → **Promote this server to a domain controller**.
 
-   ![Promote to domain controller](images/ad/12_promover_dc.png)
+   ![Promote to domain controller](images/ad/12_promote_dc.png)
 
 2. Choose **Add a new forest** with *Root domain name* `corp.lab`.
 
-   ![New corp.lab forest](images/ad/13_nuevo_bosque.png)
+   ![New corp.lab forest](images/ad/13_new_forest.png)
 
 3. Keep **DNS Server** and **Global Catalog (GC)** checked, and set a strong **DSRM** (*Directory Services Restore Mode*) password.
 4. Leave *DNS Options*, *NetBIOS Name* and *Paths* at their defaults.
 
-   ![Database, log and SYSVOL paths](images/ad/14_rutas_ntds_sysvol.png)
+   ![Database, log and SYSVOL paths](images/ad/14_ntds_sysvol_paths.png)
 
    > 🔎 **Security note:** *Paths* shows where `NTDS.dit` is stored: the Active Directory database, which includes the password hashes for the whole domain. It's a top target for attackers: any suspicious access to or copy of this file means the entire domain is probably compromised.
 
 5. Review the prerequisites and click **Install**. The server reboots automatically.
 
-   ![Prerequisites check](images/ad/15_prerrequisitos.png)
+   ![Prerequisites check](images/ad/15_prerequisites.png)
 
 ---
 
@@ -155,7 +155,7 @@ If it returns information about `corp.lab`, AD is running.
 
 Change the preferred DNS to `10.0.20.10` (if it didn't change automatically). Windows may have set it to `127.0.0.1`; in this lab the explicit IP is better because it makes troubleshooting DNS, AD replication and client errors easier, since you know exactly which server is being used.
 
-![Preferred DNS 10.0.20.10](images/ad/18_dns_preferido.png)
+![Preferred DNS 10.0.20.10](images/ad/18_preferred_dns.png)
 
 Check in PowerShell as administrator:
 
@@ -184,7 +184,7 @@ This confirms that DNS is installed, the `corp.lab` zone exists, the DC register
 Get-Service DNS,NTDS     # both should be Running
 ```
 
-![DNS and NTDS services](images/ad/21_servicios_dns_ntds.png)
+![DNS and NTDS services](images/ad/21_dns_ntds_services.png)
 
 Check Internet access through pfSense again:
 
@@ -194,7 +194,7 @@ ping 8.8.8.8
 nslookup microsoft.com
 ```
 
-![Final connectivity](images/ad/22_conectividad_final.png)
+![Final connectivity](images/ad/22_final_connectivity.png)
 
 📸 Take a snapshot: **"DC01 - Fresh Domain Controller"**.
 
@@ -204,13 +204,13 @@ nslookup microsoft.com
 
 OUs are created before joining machines to the domain. In **Server Manager → Tools → Active Directory Users and Computers**:
 
-![Tools → ADUC menu](images/ad/23_menu_aduc.png)
+![Tools → ADUC menu](images/ad/23_aduc_menu.png)
 
 1. On `corp.lab`, create an OU called **Corp** (the lab's root OU).
 
-   ![Create OU button](images/ad/24_nueva_ou.png)
+   ![Create OU button](images/ad/24_new_ou.png)
 
-   ![Corp OU](images/ad/25_ou_corp.png)
+   ![Corp OU](images/ad/25_corp_ou.png)
 
 2. Inside `Corp`, create:
 
@@ -224,7 +224,7 @@ OUs are created before joining machines to the domain. In **Server Manager → T
    └── Groups
    ```
 
-   ![OU structure](images/ad/26_estructura_ous.png)
+   ![OU structure](images/ad/26_ou_structure.png)
 
 **Why not use the default `Users` and `Computers` folders?** They're not OUs but *containers*: GPOs can't be linked to them and they're mostly legacy defaults. OUs, on the other hand, support Group Policy and delegation, and they're how companies actually organize AD. For example:
 
@@ -246,36 +246,36 @@ Two separate accounts are created to practice privilege separation: a regular us
 
 In the **Corp → Users** OU → *Create a new user*:
 
-![Create a new user](images/ad/27_nuevo_usuario.png)
+![Create a new user](images/ad/27_new_user.png)
 
-![User sergio](images/ad/28_usuario_sergio.png)
+![User sergio](images/ad/28_user_sergio.png)
 
 Check **User must change password at next logon**.
 
-![User created](images/ad/29_usuario_creado.png)
+![User created](images/ad/29_user_created.png)
 
 ### Admin user
 
 In the **Corp → Admins** OU, create `sergio.admin`:
 
-![User sergio.admin](images/ad/30_usuario_sergio_admin.png)
+![User sergio.admin](images/ad/30_user_sergio_admin.png)
 
 Then: right-click the user → **Add to a group** → type `Domain Admins` → **Check Names** → **OK**.
 
-![Add to Domain Admins](images/ad/31_grupo_domain_admins.png)
+![Add to Domain Admins](images/ad/31_domain_admins_group.png)
 
-![User added to the group](images/ad/32_grupo_agregado.png)
+![User added to the group](images/ad/32_group_added.png)
 
 ---
 
 ## Next steps
 
 1. ~~Finish AD deployment~~ ✅
-2. [Join a workstation to the domain](Win11_User_Checho.md)
+2. [Join a workstation to the domain](Win11_User.md)
 3. Verify DNS
-4. [Verify Group Policy](SecurityBaselineGPOs_Checho.md)
+4. [Verify Group Policy](SecurityBaselineGPOs.md)
 5. Create administrative users and groups
-6. [Deploy Wazuh](WazuhServer_Checho.md)
+6. [Deploy Wazuh](WazuhServer.md)
 7. Harden the domain controller
 
-[⬅️ Previous: Bastion Host](DebianBastionHost_Checho.md) · [Back to README](README.md) · [Next: Windows 11 Workstation ➡️](Win11_User_Checho.md)
+[⬅️ Previous: Bastion Host](DebianBastionHost.md) · [Back to README](README.md) · [Next: Windows 11 Workstation ➡️](Win11_User.md)

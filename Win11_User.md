@@ -1,6 +1,6 @@
 # 4. Domain-joined Windows 11 Workstation
 
-[⬅️ Previous: Active Directory](ActiveDirectory_Checho.md) · [Back to README](README.md) · [Next: Security GPOs ➡️](SecurityBaselineGPOs_Checho.md)
+[⬅️ Previous: Active Directory](ActiveDirectory.md) · [Back to README](README.md) · [Next: Security GPOs ➡️](SecurityBaselineGPOs.md)
 
 Installing the first user workstation (`WIN11-01`) and joining it to the `corp.lab` domain.
 
@@ -61,7 +61,7 @@ Installing the first user workstation (`WIN11-01`) and joining it to the `corp.l
 
 > ⚠️ DNS **must** point to the domain controller: Active Directory relies on DNS for machines to find the domain.
 
-![IPv4 configuration](images/win11/01_configuracion_ip.png)
+![IPv4 configuration](images/win11/01_ip_configuration.png)
 
 ![ipconfig](images/win11/02_ipconfig.png)
 
@@ -99,41 +99,41 @@ In PowerShell as administrator:
 Rename-Computer -NewName "WIN11-01" -Restart
 ```
 
-![Renaming the computer](images/win11/05_renombrar.png)
+![Renaming the computer](images/win11/05_rename.png)
 
 ### 4. Join the domain
 
 **Settings → System → About → Domain or workgroup → Change** → choose **Domain** and type `corp.lab`.
 
-![Joining the corp.lab domain](images/win11/06_unir_dominio.png)
+![Joining the corp.lab domain](images/win11/06_join_domain.png)
 
 It asks for credentials of an account with domain permissions: use `sergio.admin`. You should see *Welcome to the corp.lab domain*, followed by a reboot prompt.
 
-![Welcome to the domain](images/win11/07_bienvenida_dominio.png)
+![Welcome to the domain](images/win11/07_domain_welcome.png)
 
-![Reboot required](images/win11/08_reinicio.png)
+![Reboot required](images/win11/08_restart.png)
 
 ### 5. Log in with a domain user
 
 On the login screen, choose **Other user** and enter the domain account (`sergio` or `sergio@corp.lab`).
 
-![Logging in as another user](images/win11/09_login_otro_usuario.png)
+![Logging in as another user](images/win11/09_other_user_login.png)
 
 Since the account was created with *User must change password at next logon*, Windows asks for a new password. After that you get the first-time welcome screen, as if it were a fresh install.
 
-![Password change required](images/win11/10_cambio_contrasena_requerido.png)
+![Password change required](images/win11/10_password_change_required.png)
 
-![Logged in with the domain account](images/win11/11_sesion_dominio.png)
+![Logged in with the domain account](images/win11/11_domain_session.png)
 
 ### 6. Move the computer to the Workstations OU
 
 On `ADDC01`: **Server Manager → Tools → Active Directory Users and Computers**. The `WIN11-01` computer shows up in the `Computers` container:
 
-![WIN11-01 in Computers](images/win11/12_equipo_en_computers.png)
+![WIN11-01 in Computers](images/win11/12_computer_in_computers.png)
 
 Move it to **Corp → Workstations**, confirm the warning with *Yes*, and check that it landed in the right OU (that's how it will receive the workstation GPOs):
 
-![WIN11-01 in the Workstations OU](images/win11/13_equipo_en_workstations.png)
+![WIN11-01 in the Workstations OU](images/win11/13_computer_in_workstations.png)
 
 ### 7. Verify AD functionality
 
@@ -146,10 +146,10 @@ gpupdate /force        :: should complete without errors
 gpresult /r            :: shows the policies received from the domain
 ```
 
-![AD verification](images/win11/14_verificacion_ad.png)
+![AD verification](images/win11/14_ad_verification.png)
 
 ### 8. Take a snapshot
 
 📸 **"WIN11-01 - Joined to Domain"**.
 
-[⬅️ Previous: Active Directory](ActiveDirectory_Checho.md) · [Back to README](README.md) · [Next: Security GPOs ➡️](SecurityBaselineGPOs_Checho.md)
+[⬅️ Previous: Active Directory](ActiveDirectory.md) · [Back to README](README.md) · [Next: Security GPOs ➡️](SecurityBaselineGPOs.md)

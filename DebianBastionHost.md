@@ -1,6 +1,6 @@
 # 2. Bastion Host (Debian 13)
 
-[⬅️ Previous: pfSense Firewall](Firewall_Checho.md) · [Back to README](README.md) · [Next: Active Directory ➡️](ActiveDirectory_Checho.md)
+[⬅️ Previous: pfSense Firewall](Firewall.md) · [Back to README](README.md) · [Next: Active Directory ➡️](ActiveDirectory.md)
 
 The bastion host (`bastion01`) is the only administrative entry point over SSH. It's installed with the bare minimum and hardened with MFA (TOTP), SSH keys, `ufw`, `fail2ban` and AppArmor.
 
@@ -45,11 +45,11 @@ There are no firewall rules for this subnet yet, so the VM won't get connectivit
 
 Leave the **`root` password empty**. Debian then locks direct root login and adds the initial user to the `sudo` group.
 
-![Empty root password](images/bastion/01_root_sin_contrasena.png)
+![Empty root password](images/bastion/01_empty_root_password.png)
 
 The installer then asks you to create an unprivileged user (with temporary privilege escalation through `sudo`):
 
-![Creating the non-root user](images/bastion/02_usuario_no_root.png)
+![Creating the non-root user](images/bastion/02_non_root_user.png)
 
 ### Package manager and proxy
 
@@ -64,7 +64,7 @@ Select only **SSH server** and **standard system utilities**. OpenSSH provides r
 
 No desktop environment is installed: it's heavier, harder to harden and widens the attack surface.
 
-![Minimal software selection](images/bastion/03_seleccion_software.png)
+![Minimal software selection](images/bastion/03_software_selection.png)
 
 ### Finish
 
@@ -76,7 +76,7 @@ Services running after the minimal install:
 systemctl list-units --type=service --state=running
 ```
 
-![Running services after installation](images/bastion/04_servicios_activos.png)
+![Running services after installation](images/bastion/04_running_services.png)
 
 ### Check connectivity and update
 
@@ -108,7 +108,7 @@ In **Firewall → Aliases → IP → Add**:
 | Type | Host(s) |
 | Hosts | `deb.debian.org`, `security.debian.org` |
 
-![FQDN alias with the Debian repositories](images/bastion/05_alias_fqdn_repos.png)
+![FQDN alias with the Debian repositories](images/bastion/05_fqdn_repo_alias.png)
 
 Save and apply the changes.
 
@@ -132,15 +132,15 @@ In **Firewall → Rules → OPT3** (Management interface):
 
 > 💡 For HTTP and HTTPS you can create two separate rules or a *Port Alias* containing 80 and 443.
 
-![DNS rule](images/bastion/08_regla_dns.png)
+![DNS rule](images/bastion/08_dns_rule.png)
 
-![HTTPS rule to the alias](images/bastion/09_regla_https.png)
+![HTTPS rule to the alias](images/bastion/09_https_rule.png)
 
-![HTTP rule to the alias](images/bastion/10_regla_http.png)
+![HTTP rule to the alias](images/bastion/10_http_rule.png)
 
 Apply the changes. The result on OPT3 (it also includes an ICMP rule to ping from the bastion, and the temporary Internet rule, now disabled):
 
-![Bastion outbound rules on OPT3](images/bastion/11_reglas_opt3_salida.png)
+![Bastion outbound rules on OPT3](images/bastion/11_opt3_outbound_rules.png)
 
 ### 4. Verify from the bastion
 
@@ -170,7 +170,7 @@ sudo apt install -y curl auditd fail2ban ufw libpam-google-authenticator \
 | `tcpdump` | Command-line traffic capture and analysis (similar to Wireshark) |
 | `traceroute` / `mtr` | Connectivity troubleshooting |
 
-The Wazuh agent is installed later (see [Wazuh](WazuhServer_Checho.md#install-the-agents)).
+The Wazuh agent is installed later (see [Wazuh](WazuhServer.md#install-the-agents)).
 
 ---
 
@@ -454,7 +454,7 @@ If you see `Offering public key:` and `Server accepts key`, the key is being use
 | Pass | TCP | `10.0.40.11` | `10.0.40.10` | 22 |
 | Block | TCP | OPT3 net | `10.0.40.10` | 22 |
 
-![SSH rules to the bastion on OPT3](images/bastion/13_reglas_opt3_ssh_admin.png)
+![SSH rules to the bastion on OPT3](images/bastion/13_opt3_ssh_admin_rules.png)
 
 > ⚠️ These rules only filter traffic that **crosses** the firewall. As long as the Admin VM and the bastion are on the same subnet, the effective control is on the bastion itself (`ufw` and the `from=` restriction below).
 
@@ -501,4 +501,4 @@ sudo systemctl restart fail2ban
 - [CVE-2020-27347 – NVD](https://nvd.nist.gov/vuln/detail/CVE-2020-27347)
 - Risks of unrestricted ICMP (to do: add a specific source)
 
-[⬅️ Previous: pfSense Firewall](Firewall_Checho.md) · [Back to README](README.md) · [Next: Active Directory ➡️](ActiveDirectory_Checho.md)
+[⬅️ Previous: pfSense Firewall](Firewall.md) · [Back to README](README.md) · [Next: Active Directory ➡️](ActiveDirectory.md)

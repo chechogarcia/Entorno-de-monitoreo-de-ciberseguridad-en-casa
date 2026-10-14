@@ -57,13 +57,13 @@ Recommended reading order:
 
 | # | Guide | What it covers |
 | - | ----- | -------------- |
-| 1 | [pfSense firewall](Firewall_Checho.md) | Installation on VMware, WAN/LAN interfaces, `vmxnet3` troubleshooting |
-| 2 | [Bastion host (Debian 13)](DebianBastionHost_Checho.md) | Minimal install, FQDN aliases in pfSense, AppArmor, ufw, fail2ban, SSH with key + TOTP |
-| 3 | [Active Directory](ActiveDirectory_Checho.md) | Windows Server 2022, AD DS + DNS, `corp.lab` forest, OUs and users |
-| 4 | [Windows 11 workstation](Win11_User_Checho.md) | Installation, domain join and verification |
-| 5 | [Security GPOs](SecurityBaselineGPOs_Checho.md) | Workstation Baseline and DC Baseline: LLMNR, PowerShell logging, advanced auditing |
-| 6 | [Sysmon](Deploy_Sysmon_Checho.md) | Manual install and automatic deployment through GPO |
-| 7 | [Wazuh](WazuhServer_Checho.md) | Firewall rules, Ubuntu hardening, Wazuh install and agents |
+| 1 | [pfSense firewall](Firewall.md) | Installation on VMware, WAN/LAN interfaces, `vmxnet3` troubleshooting |
+| 2 | [Bastion host (Debian 13)](DebianBastionHost.md) | Minimal install, FQDN aliases in pfSense, AppArmor, ufw, fail2ban, SSH with key + TOTP |
+| 3 | [Active Directory](ActiveDirectory.md) | Windows Server 2022, AD DS + DNS, `corp.lab` forest, OUs and users |
+| 4 | [Windows 11 workstation](Win11_User.md) | Installation, domain join and verification |
+| 5 | [Security GPOs](SecurityBaselineGPOs.md) | Workstation Baseline and DC Baseline: LLMNR, PowerShell logging, advanced auditing |
+| 6 | [Sysmon](Deploy_Sysmon.md) | Manual install and automatic deployment through GPO |
+| 7 | [Wazuh](WazuhServer.md) | Firewall rules, Ubuntu hardening, Wazuh install and agents |
 
 ---
 

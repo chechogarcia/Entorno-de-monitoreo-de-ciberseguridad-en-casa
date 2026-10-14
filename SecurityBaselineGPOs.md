@@ -1,6 +1,6 @@
 # 5. Security GPOs (Security Baselines)
 
-[⬅️ Previous: Windows 11 Workstation](Win11_User_Checho.md) · [Back to README](README.md) · [Next: Sysmon ➡️](Deploy_Sysmon_Checho.md)
+[⬅️ Previous: Windows 11 Workstation](Win11_User.md) · [Back to README](README.md) · [Next: Sysmon ➡️](Deploy_Sysmon.md)
 
 A **GPO** (*Group Policy Object*) lets administrators centrally manage operating system, application and security settings for many users and computers in the domain.
 
@@ -28,7 +28,7 @@ This lab creates two **detection-focused** baselines:
 2. Go to **Domains → corp.lab → Corp → Workstations**.
 3. Right-click the OU → **Create a GPO in this domain, and Link it here...** → name: `Workstation Baseline`.
 
-   ![New Workstation Baseline GPO](images/gpo/01_nueva_gpo_workstation.png)
+   ![New Workstation Baseline GPO](images/gpo/01_new_workstation_gpo.png)
 
 4. Right-click the GPO → **Edit**.
 
@@ -36,7 +36,7 @@ This lab creates two **detection-focused** baselines:
 
 **Computer Configuration → Policies → Administrative Templates → Network → DNS Client** → **Turn off multicast name resolution** → **Enabled**.
 
-![Disable LLMNR](images/gpo/02_desactivar_llmnr.png)
+![Disable LLMNR](images/gpo/02_disable_llmnr.png)
 
 > **Why disable LLMNR?** When DNS fails, Windows asks the whole local network for the name via multicast using LLMNR (*Link-Local Multicast Name Resolution*). An attacker on the same network can answer, pretending to be the requested server (**LLMNR poisoning**, e.g. with *Responder*), trick the victim into authenticating against them, and capture the NetNTLMv2 hash (**credential theft**). That hash can be cracked or relayed to other servers (**relay attacks**) without ever knowing the password.
 
@@ -44,7 +44,7 @@ This lab creates two **detection-focused** baselines:
 
 **Computer Configuration → Policies → Administrative Templates → Windows Components → Windows PowerShell**
 
-![Windows PowerShell policies](images/gpo/03_powershell_politicas.png)
+![Windows PowerShell policies](images/gpo/03_powershell_policies.png)
 
 - **Turn on Module Logging** → **Enabled**. Under *Module Names → Show...*, enter `*` to log every module.
 
@@ -123,7 +123,7 @@ The domain controller uses the **Domain Controllers** OU that Windows creates by
 
    The GPO is linked to the `Domain Controllers` OU at the **domain root** (where the `ADDC01` object lives), alongside the `Default Domain Controllers Policy`:
 
-   ![DC Baseline linked to the Domain Controllers OU](images/gpo/17b_dc_baseline_linked.png)
+   ![DC Baseline linked to the Domain Controllers OU](images/gpo/17_dc_baseline_linked.png)
 
    > 💡 Linking it to the default OU is the right call: Microsoft doesn't recommend moving domain controllers out of it. If it were linked to another OU with the same name (e.g. inside `Corp`) that doesn't contain the DC, the policy would never apply.
 
@@ -210,12 +210,12 @@ If Event ID 4688 shows up, process auditing is working.
 ## Next steps
 
 - 📸 Snapshot pfSense, ADDC01, WIN11-01 and Bastion01: **"VM__Pre_Sysmon_Wazuh"**
-- [Deploy Sysmon](Deploy_Sysmon_Checho.md)
-- [Build Wazuh and install the agents](WazuhServer_Checho.md)
+- [Deploy Sysmon](Deploy_Sysmon.md)
+- [Build Wazuh and install the agents](WazuhServer.md)
 - Verify telemetry
 - Harden the DC further
 - Build the attacker VM and generate detections
 - Integrate Linux with AD
 - Add AD CS
 
-[⬅️ Previous: Windows 11 Workstation](Win11_User_Checho.md) · [Back to README](README.md) · [Next: Sysmon ➡️](Deploy_Sysmon_Checho.md)
+[⬅️ Previous: Windows 11 Workstation](Win11_User.md) · [Back to README](README.md) · [Next: Sysmon ➡️](Deploy_Sysmon.md)

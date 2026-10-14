@@ -1,6 +1,6 @@
 # 6. Deploying Sysmon
 
-[⬅️ Previous: Security GPOs](SecurityBaselineGPOs_Checho.md) · [Back to README](README.md) · [Next: Wazuh ➡️](WazuhServer_Checho.md)
+[⬅️ Previous: Security GPOs](SecurityBaselineGPOs.md) · [Back to README](README.md) · [Next: Wazuh ➡️](WazuhServer.md)
 
 **Sysmon** (*System Monitor*, from Sysinternals) logs detailed Windows activity —process creation, network connections, DNS queries, created files, registry changes— which is then sent to Wazuh to build detections.
 
@@ -33,7 +33,7 @@ Sysmon comes as a `.zip` with `Sysmon.exe`, `Sysmon64.exe`, `Sysmon64a.exe` and 
 
 Create `C:\Sysmon` and copy `Sysmon64.exe` and `sysmonconfig-export.xml` into it.
 
-![C:\Sysmon folder](images/sysmon/01_carpeta_sysmon.png)
+![C:\Sysmon folder](images/sysmon/01_sysmon_folder.png)
 
 ### 2. Install
 
@@ -56,7 +56,7 @@ Starting Sysmon64..
 Sysmon64 started.
 ```
 
-![Installing Sysmon](images/sysmon/02_instalacion.png)
+![Installing Sysmon](images/sysmon/02_installation.png)
 
 ### 3. Check the service and configuration
 
@@ -65,7 +65,7 @@ Get-Service Sysmon64      # Status: Running
 .\Sysmon64.exe -c         # shows the active configuration
 ```
 
-![Service and configuration](images/sysmon/03_servicio_y_config.png)
+![Service and configuration](images/sysmon/03_service_and_config.png)
 
 ### 4. Check that logs are being generated
 
@@ -76,7 +76,7 @@ Get-Service Sysmon64      # Status: Running
   Get-WinEvent -LogName "Microsoft-Windows-Sysmon/Operational" -MaxEvents 10
   ```
 
-![Events in PowerShell](images/sysmon/04_eventos_powershell.png)
+![Events in PowerShell](images/sysmon/04_powershell_events.png)
 
 ![Events in Event Viewer](images/sysmon/05_event_viewer.png)
 
@@ -91,13 +91,13 @@ Get-WinEvent -LogName "Microsoft-Windows-Sysmon/Operational" -MaxEvents 20 |
   Select-Object Id, TimeCreated, Message
 ```
 
-![Generating activity](images/sysmon/06_generar_eventos.png)
+![Generating activity](images/sysmon/06_generate_events.png)
 
-![Generated events (Process Create, DNS query, File created)](images/sysmon/07_eventos_generados.png)
+![Generated events (Process Create, DNS query, File created)](images/sysmon/07_generated_events.png)
 
 Repeat the same process on `WIN11-01`:
 
-![Installing on WIN11-01](images/sysmon/08_instalacion_win11.png)
+![Installing on WIN11-01](images/sysmon/08_win11_installation.png)
 
 ---
 
@@ -158,9 +158,9 @@ and copy `Sysmon64.exe` and `sysmonconfig-export.xml` into it.
 
 SYSVOL is used because every computer in the domain can read it by default.
 
-![Sysmon folder in SYSVOL](images/sysmon/09_carpeta_sysvol.png)
+![Sysmon folder in SYSVOL](images/sysmon/09_sysvol_folder.png)
 
-![Files in the folder](images/sysmon/10_archivos_sysvol.png)
+![Files in the folder](images/sysmon/10_sysvol_files.png)
 
 ### 2. Create the install script
 
@@ -181,7 +181,7 @@ copy "%~dp0Sysmon64.exe" "C:\Windows\Sysmon64.exe"
 "C:\Windows\Sysmon64.exe" -accepteula -i "%~dp0sysmonconfig-export.xml"
 ```
 
-![Basic script](images/sysmon/11_script_basico.png)
+![Basic script](images/sysmon/11_basic_script.png)
 
 **Version that also updates the configuration** if Sysmon is already installed:
 
@@ -227,7 +227,7 @@ What this version improves:
 2. **Messages (`echo`):** show which branch the script took.
 3. **`setlocal` / `endlocal`:** variables don't leak into other CMD windows.
 
-![Improved script](images/sysmon/12_script_mejorado.png)
+![Improved script](images/sysmon/12_improved_script.png)
 
 > ⚠️ **Don't use `pause` in a startup script.** GPO startup scripts run with no visible window: a `pause` leaves the script waiting for a keypress nobody will make and delays boot until the timeout. Only use it when testing the script by hand.
 >
@@ -239,7 +239,7 @@ What this version improves:
 2. Go to **Computer Configuration → Policies → Windows Settings → Scripts (Startup/Shutdown) → Startup** and double-click it.
 3. Click **Add...** → **Browse...**
 
-   ![Add a script](images/sysmon/13_agregar_script.png)
+   ![Add a script](images/sysmon/13_add_script.png)
 
 4. Select the script from the SYSVOL folder. The path should be:
 
@@ -247,11 +247,11 @@ What this version improves:
    \\corp.lab\SYSVOL\corp.lab\scripts\Sysmon\install_sysmon.cmd
    ```
 
-   ![Script path](images/sysmon/15_ruta_script.png)
+   ![Script path](images/sysmon/15_script_path.png)
 
 > 💡 The **Show Files** button opens the GPO's own script folder (`...\Machine\Scripts\Startup`). You don't need to copy the script there: if it ran from that folder, `%~dp0` would point to it and wouldn't find `Sysmon64.exe` or the `.xml`. What matters is that the configured path is `scripts\Sysmon`.
 >
-> ![The GPO's Startup folder](images/sysmon/14_carpeta_startup_gpo.png)
+> ![The GPO's Startup folder](images/sysmon/14_gpo_startup_folder.png)
 
 ### 4. Update Group Policy
 
@@ -271,9 +271,9 @@ Get-Service Sysmon64          # Status: Running
 Get-WinEvent -LogName "Microsoft-Windows-Sysmon/Operational" -MaxEvents 10
 ```
 
-![Service on WIN11-01](images/sysmon/16_servicio_win11_gpo.png)
+![Service on WIN11-01](images/sysmon/16_win11_gpo_service.png)
 
-![Events on WIN11-01](images/sysmon/17_eventos_win11_gpo.png)
+![Events on WIN11-01](images/sysmon/17_win11_gpo_events.png)
 
 ### 6. Test with a new workstation
 
@@ -295,11 +295,11 @@ Get-WinEvent -LogName "Microsoft-Windows-Sysmon/Operational" -MaxEvents 10
 
 ## Next steps
 
-- [Build Wazuh and install the agents](WazuhServer_Checho.md)
+- [Build Wazuh and install the agents](WazuhServer.md)
 - Verify telemetry
 - Harden the DC further
 - Build the attacker VM and generate detections
 - Integrate Linux with AD
 - Add AD CS
 
-[⬅️ Previous: Security GPOs](SecurityBaselineGPOs_Checho.md) · [Back to README](README.md) · [Next: Wazuh ➡️](WazuhServer_Checho.md)
+[⬅️ Previous: Security GPOs](SecurityBaselineGPOs.md) · [Back to README](README.md) · [Next: Wazuh ➡️](WazuhServer.md)
