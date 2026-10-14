@@ -121,9 +121,11 @@ Para el controlador de dominio se usa la OU **Domain Controllers** que Windows c
 1. **Tools → Group Policy Management → Forest → Domains → corp.lab → Domain Controllers**.
 2. Clic derecho → **Create a GPO in this domain, and Link it here...** → nombre: `DC Baseline`.
 
-   ![Nueva GPO DC Baseline](images/gpo/17_nueva_gpo_dc.png)
+   La GPO queda vinculada a la OU `Domain Controllers` de la **raíz del dominio** (donde está el objeto `ADDC01`), junto a la `Default Domain Controllers Policy`:
 
-   > ⚠️ Verificar que la GPO quede vinculada a la OU `Domain Controllers` de la **raíz del dominio** (donde está el objeto `ADDC01`) y no a una OU con el mismo nombre dentro de `Corp`. Si se vincula a una OU vacía, la política no se aplica al DC. Microsoft no recomienda mover los controladores de dominio fuera de su OU por defecto.
+   ![DC Baseline vinculada a la OU Domain Controllers](images/gpo/17b_dc_baseline_vinculada.png)
+
+   > 💡 Vincularla a la OU por defecto es lo correcto: Microsoft no recomienda mover los controladores de dominio fuera de ella. Si se vinculara a otra OU con el mismo nombre (por ejemplo, dentro de `Corp`) y sin el DC adentro, la política no se aplicaría.
 
 3. Clic derecho → **Edit** y configurar:
 
