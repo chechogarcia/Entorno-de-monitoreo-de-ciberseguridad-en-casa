@@ -1,6 +1,6 @@
 # 1. pfSense Firewall
 
-[⬅️ Back to README](README.md) · [Next: Bastion Host ➡️](DebianBastionHost_Checho.md)
+[⬅️ Back to README](README.md) · [Next: Bastion Host ➡️](DebianBastionHost.md)
 
 pfSense is the core of the lab: it separates every subnet and decides which traffic can move between them and out to the Internet. This guide covers installing it on VMware Workstation and the initial WAN and LAN setup.
 
@@ -28,7 +28,7 @@ Download the ISO image from <https://www.pfsense.org/download/>.
 
 Create a new VM in VMware using the pfSense ISO.
 
-![Creating the VM with the pfSense ISO](images/Creacion_Maquina_virtual_pfSense_ISO.png)
+![Creating the VM with the pfSense ISO](images/pfsense/01_create_vm_with_iso.png)
 
 ### 3. Create the internal network in the Virtual Network Editor
 
@@ -37,7 +37,7 @@ Open the **Virtual Network Editor** as administrator and create a new network:
 - Type: **Host-only**.
 - **DHCP disabled**, so that addresses are handed out by the firewall rather than by VMware.
 
-![Virtual Network Editor configuration](images/Virtual_Network_Editor_config.png)
+![Virtual Network Editor configuration](images/pfsense/02_virtual_network_editor.png)
 
 ### 4. Configure the VM's network adapters
 
@@ -45,11 +45,11 @@ Before powering on the VM, add a second network adapter and assign 2 processors 
 
 - **Adapter 1 (WAN):** connection type **Bridged**.
 
-  ![Adapter 1 - WAN in Bridged mode](images/pfSense_VM_settings_network_adapter_1.png)
+  ![Adapter 1 - WAN in Bridged mode](images/pfsense/03_network_adapter_wan.png)
 
 - **Adapter 2 (LAN):** connection type **Custom**, selecting the virtual network created in step 3 (in this case **VMnet2**).
 
-  ![Adapter 2 - LAN on VMnet2](images/pfSense_VM_settings_network_adapter_2.png)
+  ![Adapter 2 - LAN on VMnet2](images/pfsense/04_network_adapter_lan.png)
 
 ### 5. Install pfSense
 
@@ -62,7 +62,7 @@ Power on the VM and follow the installer. When assigning interfaces, make sure t
 
 When it finishes, the console shows the IP assigned to each interface:
 
-![Validating the WAN and LAN interfaces](images/Validacion_config_interfaces.png)
+![Validating the WAN and LAN interfaces](images/pfsense/05_interface_validation.png)
 
 ### 7. Test Internet connectivity
 
@@ -72,7 +72,7 @@ From the pfSense console (option `7) Ping host`) or from the shell:
 ping 8.8.8.8
 ```
 
-![Connectivity test](images/prueba_conexion.png)
+![Connectivity test](images/pfsense/06_connectivity_test.png)
 
 ---
 
@@ -107,4 +107,4 @@ ping 8.8.8.8
 - Creating the additional interfaces (OPT1–OPT5) and assigning their IPs for each lab subnet (see the addressing table in the [README](README.md#addressing)).
 - Accessing the pfSense web UI and changing the default `admin` password.
 
-[⬅️ Back to README](README.md) · [Next: Bastion Host ➡️](DebianBastionHost_Checho.md)
+[⬅️ Back to README](README.md) · [Next: Bastion Host ➡️](DebianBastionHost.md)

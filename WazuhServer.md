@@ -1,6 +1,6 @@
 # 7. Wazuh Server (SIEM)
 
-[⬅️ Previous: Sysmon](Deploy_Sysmon_Checho.md) · [Back to README](README.md)
+[⬅️ Previous: Sysmon](Deploy_Sysmon.md) · [Back to README](README.md)
 
 **Wazuh** centralizes logs and telemetry from the lab machines (Windows events, Sysmon, Linux logs) and generates alerts. It's installed on the Security subnet with all three components (indexer, server and dashboard) on a single VM.
 
@@ -141,7 +141,7 @@ sudo reboot
    sudo netplan apply
    ```
 
-   ![Netplan file permissions](images/wazuh/02_permisos_netplan.png)
+   ![Netplan file permissions](images/wazuh/02_netplan_permissions.png)
 
 ---
 
@@ -223,11 +223,11 @@ Each rule is created on the **source interface** of the traffic.
 | Users (LAN) | Security | 1514 TCP (agent), 1515 TCP (enrollment) |
 | Servers (OPT1) | Security | 1514 TCP (agent), 1515 TCP (enrollment) |
 
-![Rules on Management (OPT3)](images/wazuh/05_reglas_management.png)
+![Rules on Management (OPT3)](images/wazuh/05_management_rules.png)
 
-![Rules on Users (LAN)](images/wazuh/06_reglas_users.png)
+![Rules on Users (LAN)](images/wazuh/06_users_rules.png)
 
-![Rules on Servers (OPT1)](images/wazuh/07_reglas_servers.png)
+![Rules on Servers (OPT1)](images/wazuh/07_servers_rules.png)
 
 ---
 
@@ -322,7 +322,7 @@ Machines with an agent:
 | WIN11-01 | `10.0.10.110` | Windows 11 Pro |
 | bastion01 | `10.0.40.10` | Debian 13 |
 
-![All three agents active in Wazuh](images/wazuh/09_agentes_activos.png)
+![All three agents active in Wazuh](images/wazuh/09_active_agents.png)
 
 ---
 
@@ -334,4 +334,4 @@ Machines with an agent:
 - Integrate Linux with AD
 - Add AD CS
 
-[⬅️ Previous: Sysmon](Deploy_Sysmon_Checho.md) · [Back to README](README.md)
+[⬅️ Previous: Sysmon](Deploy_Sysmon.md) · [Back to README](README.md)
