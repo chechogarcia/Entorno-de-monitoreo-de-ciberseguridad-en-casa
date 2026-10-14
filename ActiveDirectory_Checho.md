@@ -1,69 +1,69 @@
 # 3. Active Directory (Windows Server 2022)
 
-[⬅️ Anterior: Bastion Host](DebianBastionHost_Checho.md) · [Volver al README](README.md) · [Siguiente: Workstation Windows 11 ➡️](Win11_User_Checho.md)
+[⬅️ Previous: Bastion Host](DebianBastionHost_Checho.md) · [Back to README](README.md) · [Next: Windows 11 Workstation ➡️](Win11_User_Checho.md)
 
-Instalación del controlador de dominio `ADDC01` con los roles AD DS y DNS, creación del bosque `corp.lab`, de las Unidades Organizativas (OU) y de los primeros usuarios.
+Installing the `ADDC01` domain controller with the AD DS and DNS roles, creating the `corp.lab` forest, the Organizational Units (OUs) and the first users.
 
-> 🎥 Video guía de referencia: <https://www.youtube.com/watch?v=1XeDht_B-bA>
+> 🎥 Reference video: <https://www.youtube.com/watch?v=1XeDht_B-bA>
 
-## Contenido
+## Contents
 
-- [Especificaciones](#especificaciones)
-- [Instalación de Windows Server](#instalación-de-windows-server)
-- [Red y acceso a Internet](#red-y-acceso-a-internet)
-- [1. Instalar actualizaciones](#1-instalar-actualizaciones)
-- [2. Instalar AD DS y DNS](#2-instalar-ad-ds-y-dns)
-- [3. Promover el servidor a controlador de dominio](#3-promover-el-servidor-a-controlador-de-dominio)
-- [4. Verificar que AD funciona](#4-verificar-que-ad-funciona)
-- [5. Ajustar el DNS](#5-ajustar-el-dns)
-- [6. Crear las Unidades Organizativas](#6-crear-las-unidades-organizativas)
-- [7. Crear usuarios](#7-crear-usuarios)
+- [Specs](#specs)
+- [Installing Windows Server](#installing-windows-server)
+- [Network and Internet access](#network-and-internet-access)
+- [1. Install updates](#1-install-updates)
+- [2. Install AD DS and DNS](#2-install-ad-ds-and-dns)
+- [3. Promote the server to a domain controller](#3-promote-the-server-to-a-domain-controller)
+- [4. Verify AD is working](#4-verify-ad-is-working)
+- [5. Fix DNS](#5-fix-dns)
+- [6. Create the Organizational Units](#6-create-the-organizational-units)
+- [7. Create users](#7-create-users)
 
-## Especificaciones
+## Specs
 
-| Parámetro | Valor |
+| Parameter | Value |
 | --------- | ----- |
 | Hostname | `ADDC01` |
-| Sistema operativo | Windows Server 2022 Standard (Desktop Experience) |
-| RAM / Disco | 8 GB / 80 GB |
-| Red | Servers – `10.0.20.0/24` (interfaz OPT1 en pfSense) |
+| Operating system | Windows Server 2022 Standard (Desktop Experience) |
+| RAM / Disk | 8 GB / 80 GB |
+| Network | Servers – `10.0.20.0/24` (OPT1 interface in pfSense) |
 | IP / Gateway | `10.0.20.10` / `10.0.20.1` |
-| Dominio | `corp.lab` (NetBIOS: `CORP`) |
+| Domain | `corp.lab` (NetBIOS: `CORP`) |
 
 ---
 
-## Instalación de Windows Server
+## Installing Windows Server
 
-1. Descargar la ISO desde el sitio oficial de Microsoft.
-2. Crear la VM **sin** asignar la ISO en el asistente ("I will install the operating system later"), para evitar el *Easy Install* de VMware, que a veces da problemas con esta versión.
-3. Asignar 8 GB de RAM y 80 GB de disco, montar la ISO en la unidad de CD y conectar la red a la subred de Servers.
-4. Instalar la edición **Windows Server 2022 Standard (Desktop Experience)** para tener escritorio y no solo consola.
-5. En el tipo de instalación elegir **Custom: Install Microsoft Server Operating System only (advanced)**: un controlador de dominio debe partir de un sistema limpio (la otra opción es para actualizar un Windows existente).
+1. Download the ISO from Microsoft's official site.
+2. Create the VM **without** attaching the ISO in the wizard ("I will install the operating system later"), to avoid VMware's *Easy Install*, which sometimes causes problems with this version.
+3. Assign 8 GB of RAM and 80 GB of disk, mount the ISO in the CD drive and connect the network to the Servers subnet.
+4. Install the **Windows Server 2022 Standard (Desktop Experience)** edition to get a desktop rather than just a console.
+5. For the installation type choose **Custom: Install Microsoft Server Operating System only (advanced)**: a domain controller should start from a clean system (the other option is for upgrading an existing Windows install).
 
-### Renombrar el equipo
+### Rename the computer
 
-**Search → This PC → Properties → Rename this PC** → `ADDC01`. Reiniciar.
+**Search → This PC → Properties → Rename this PC** → `ADDC01`. Reboot.
 
 ---
 
-## Red y acceso a Internet
+## Network and Internet access
 
-Configurar IP estática `10.0.20.10`, gateway `10.0.20.1` y, **temporalmente**, DNS `8.8.8.8`:
+Set a static IP `10.0.20.10`, gateway `10.0.20.1` and, **temporarily**, DNS `8.8.8.8`:
 
-![IP estática con DNS temporal](images/ad/01_ip_estatica_dns_temporal.png)
+![Static IP with temporary DNS](images/ad/01_ip_estatica_dns_temporal.png)
 
-En pfSense (**Firewall → Rules → OPT1**) crear reglas para que la subred de Servers pueda salir a Internet a instalar roles y actualizaciones:
+In pfSense (**Firewall → Rules → OPT1**), create rules so the Servers subnet can reach the Internet to install roles and updates:
 
-| Acción | Protocolo | Origen | Destino | Puerto |
-| ------ | --------- | ------ | ------- | ------ |
-| Pass | ICMP | OPT1 net | any | — (para probar con `ping`) |
+| Action | Protocol | Source | Destination | Port |
+| ------ | -------- | ------ | ----------- | ---- |
+| Pass | ICMP | OPT1 net | any | — (to test with `ping`) |
 | Pass | TCP | OPT1 net | any | 80 (HTTP) |
 | Pass | TCP | OPT1 net | any | 443 (HTTPS) |
 | Pass | TCP/UDP | OPT1 net | any | 53 (DNS) |
 
-![Reglas de salida en OPT1](images/ad/02_reglas_opt1_salida.png)
+![Outbound rules on OPT1](images/ad/02_reglas_opt1_salida.png)
 
-Probar desde `ADDC01`:
+Test from `ADDC01`:
 
 ```powershell
 ping 10.0.20.1
@@ -73,94 +73,94 @@ nslookup microsoft.com
 
 ---
 
-## 1. Instalar actualizaciones
+## 1. Install updates
 
-**Settings → Windows Update → Check for updates**. Repetir (y reiniciar las veces que haga falta) hasta que aparezca *You're up to date*.
+**Settings → Windows Update → Check for updates**. Repeat (rebooting as many times as needed) until you see *You're up to date*.
 
-![Windows Update al día](images/ad/03_windows_update.png)
-
----
-
-## 2. Instalar AD DS y DNS
-
-1. En **Server Manager → Manage → Add Roles and Features**, clic en *Next*.
-2. Elegir **Role-based or feature-based installation**.
-
-   ![Tipo de instalación](images/ad/04_tipo_instalacion.png)
-
-3. Seleccionar el servidor `ADDC01`.
-
-   ![Servidor de destino](images/ad/05_servidor_destino.png)
-
-4. Marcar **Active Directory Domain Services** y **DNS Server**. Cada vez que se marca un rol aparece una ventana: clic en **Add Features**.
-
-   ![Rol AD DS](images/ad/06_rol_adds.png)
-
-   ![Features requeridas por AD DS](images/ad/07_features_adds.png)
-
-   ![Features requeridas por DNS](images/ad/08_features_dns.png)
-
-   ![Ambos roles seleccionados](images/ad/09_roles_seleccionados.png)
-
-5. Continuar con *Next* hasta la confirmación y clic en **Install**.
-
-   ![Confirmación de la instalación](images/ad/10_confirmar_instalacion.png)
-
-   ![Instalación completada](images/ad/11_instalacion_completa.png)
+![Windows Update up to date](images/ad/03_windows_update.png)
 
 ---
 
-## 3. Promover el servidor a controlador de dominio
+## 2. Install AD DS and DNS
 
-1. Clic en la bandera de notificaciones de Server Manager → **Promote this server to a domain controller**.
+1. In **Server Manager → Manage → Add Roles and Features**, click *Next*.
+2. Choose **Role-based or feature-based installation**.
 
-   ![Promover a controlador de dominio](images/ad/12_promover_dc.png)
+   ![Installation type](images/ad/04_tipo_instalacion.png)
 
-2. Elegir **Add a new forest** con *Root domain name* `corp.lab`.
+3. Select the `ADDC01` server.
 
-   ![Nuevo bosque corp.lab](images/ad/13_nuevo_bosque.png)
+   ![Destination server](images/ad/05_servidor_destino.png)
 
-3. Mantener marcados **DNS Server** y **Global Catalog (GC)** y definir una contraseña robusta de **DSRM** (*Directory Services Restore Mode*).
-4. Dejar por defecto *DNS Options*, *NetBIOS Name* y *Paths*.
+4. Check **Active Directory Domain Services** and **DNS Server**. Each time you check a role, a window pops up: click **Add Features**.
 
-   ![Rutas de la base de datos, logs y SYSVOL](images/ad/14_rutas_ntds_sysvol.png)
+   ![AD DS role](images/ad/06_rol_adds.png)
 
-   > 🔎 **Dato de seguridad:** en *Paths* se ve dónde queda `NTDS.dit`, la base de datos de Active Directory (incluye los hashes de las contraseñas del dominio). Es un objetivo prioritario para los atacantes: cualquier acceso o copia sospechosa de este archivo indica que probablemente todo el dominio está comprometido.
+   ![Features required by AD DS](images/ad/07_features_adds.png)
 
-5. Revisar los prerrequisitos y clic en **Install**. El servidor se reinicia automáticamente.
+   ![Features required by DNS](images/ad/08_features_dns.png)
 
-   ![Verificación de prerrequisitos](images/ad/15_prerrequisitos.png)
+   ![Both roles selected](images/ad/09_roles_seleccionados.png)
+
+5. Click *Next* through to the confirmation page and click **Install**.
+
+   ![Installation confirmation](images/ad/10_confirmar_instalacion.png)
+
+   ![Installation complete](images/ad/11_instalacion_completa.png)
 
 ---
 
-## 4. Verificar que AD funciona
+## 3. Promote the server to a domain controller
 
-Tras el reinicio, el inicio de sesión aparece como `CORP\Administrator`, indicando que el equipo ya está en el dominio `CORP`:
+1. Click the notifications flag in Server Manager → **Promote this server to a domain controller**.
 
-![Inicio de sesión como CORP\Administrator](images/ad/16_login_corp_administrator.png)
+   ![Promote to domain controller](images/ad/12_promover_dc.png)
 
-En PowerShell:
+2. Choose **Add a new forest** with *Root domain name* `corp.lab`.
+
+   ![New corp.lab forest](images/ad/13_nuevo_bosque.png)
+
+3. Keep **DNS Server** and **Global Catalog (GC)** checked, and set a strong **DSRM** (*Directory Services Restore Mode*) password.
+4. Leave *DNS Options*, *NetBIOS Name* and *Paths* at their defaults.
+
+   ![Database, log and SYSVOL paths](images/ad/14_rutas_ntds_sysvol.png)
+
+   > 🔎 **Security note:** *Paths* shows where `NTDS.dit` is stored: the Active Directory database, which includes the password hashes for the whole domain. It's a top target for attackers: any suspicious access to or copy of this file means the entire domain is probably compromised.
+
+5. Review the prerequisites and click **Install**. The server reboots automatically.
+
+   ![Prerequisites check](images/ad/15_prerrequisitos.png)
+
+---
+
+## 4. Verify AD is working
+
+After the reboot, the login screen shows `CORP\Administrator`, meaning the machine is now in the `CORP` domain:
+
+![Logging in as CORP\Administrator](images/ad/16_login_corp_administrator.png)
+
+In PowerShell:
 
 ```powershell
 Get-ADDomain
 ```
 
-Si devuelve la información de `corp.lab`, AD está funcionando.
+If it returns information about `corp.lab`, AD is running.
 
-![Salida de Get-ADDomain](images/ad/17_get_addomain.png)
+![Get-ADDomain output](images/ad/17_get_addomain.png)
 
 ---
 
-## 5. Ajustar el DNS
+## 5. Fix DNS
 
-Cambiar el DNS preferido a `10.0.20.10` (si no cambió automáticamente). Puede que Windows lo haya puesto en `127.0.0.1`; en este laboratorio es preferible la IP explícita porque facilita el troubleshooting de DNS, replicación de AD y errores de clientes, al saber exactamente qué servidor se está usando.
+Change the preferred DNS to `10.0.20.10` (if it didn't change automatically). Windows may have set it to `127.0.0.1`; in this lab the explicit IP is better because it makes troubleshooting DNS, AD replication and client errors easier, since you know exactly which server is being used.
 
-![DNS preferido 10.0.20.10](images/ad/18_dns_preferido.png)
+![Preferred DNS 10.0.20.10](images/ad/18_dns_preferido.png)
 
-Verificar en PowerShell como administrador:
+Check in PowerShell as administrator:
 
 ```powershell
-ipconfig /all          # DNS Servers debe incluir 10.0.20.10
+ipconfig /all          # DNS Servers should include 10.0.20.10
 ```
 
 ![ipconfig /all](images/ad/19_ipconfig_all.png)
@@ -169,7 +169,7 @@ ipconfig /all          # DNS Servers debe incluir 10.0.20.10
 nslookup addc01.corp.lab
 ```
 
-Resultado esperado:
+Expected result:
 
 ```text
 Name:    addc01.corp.lab
@@ -178,15 +178,15 @@ Address: 10.0.20.10
 
 ![nslookup addc01.corp.lab](images/ad/20_nslookup_addc01.png)
 
-Esto confirma que el DNS está instalado, que la zona `corp.lab` existe, que el DC registró su registro DNS y que el DNS resuelve el hostname del controlador de dominio.
+This confirms that DNS is installed, the `corp.lab` zone exists, the DC registered its DNS record, and DNS can resolve the domain controller's hostname.
 
 ```powershell
-Get-Service DNS,NTDS     # ambos deben estar en Running
+Get-Service DNS,NTDS     # both should be Running
 ```
 
-![Servicios DNS y NTDS](images/ad/21_servicios_dns_ntds.png)
+![DNS and NTDS services](images/ad/21_servicios_dns_ntds.png)
 
-Comprobar de nuevo la salida a Internet a través de pfSense:
+Check Internet access through pfSense again:
 
 ```powershell
 ping 10.0.20.1
@@ -194,25 +194,25 @@ ping 8.8.8.8
 nslookup microsoft.com
 ```
 
-![Conectividad final](images/ad/22_conectividad_final.png)
+![Final connectivity](images/ad/22_conectividad_final.png)
 
-📸 Tomar un snapshot: **"DC01 - Fresh Domain Controller"**.
+📸 Take a snapshot: **"DC01 - Fresh Domain Controller"**.
 
 ---
 
-## 6. Crear las Unidades Organizativas
+## 6. Create the Organizational Units
 
-Antes de unir equipos al dominio se crean las OU. En **Server Manager → Tools → Active Directory Users and Computers**:
+OUs are created before joining machines to the domain. In **Server Manager → Tools → Active Directory Users and Computers**:
 
-![Menú Tools → ADUC](images/ad/23_menu_aduc.png)
+![Tools → ADUC menu](images/ad/23_menu_aduc.png)
 
-1. Sobre `corp.lab`, crear una OU llamada **Corp** (la OU raíz del laboratorio).
+1. On `corp.lab`, create an OU called **Corp** (the lab's root OU).
 
-   ![Botón para crear una OU](images/ad/24_nueva_ou.png)
+   ![Create OU button](images/ad/24_nueva_ou.png)
 
-   ![OU Corp](images/ad/25_ou_corp.png)
+   ![Corp OU](images/ad/25_ou_corp.png)
 
-2. Dentro de `Corp`, crear:
+2. Inside `Corp`, create:
 
    ```text
    Corp
@@ -224,58 +224,58 @@ Antes de unir equipos al dominio se crean las OU. En **Server Manager → Tools 
    └── Groups
    ```
 
-   ![Estructura de OUs](images/ad/26_estructura_ous.png)
+   ![OU structure](images/ad/26_estructura_ous.png)
 
-**¿Por qué no usar las carpetas por defecto `Users` y `Computers`?** No son OU sino *containers*: no se les pueden vincular GPO y son casi siempre valores heredados (*legacy*). Las OU, en cambio, permiten aplicar Group Policy, delegar permisos y son la forma en que las empresas organizan AD. Por ejemplo:
+**Why not use the default `Users` and `Computers` folders?** They're not OUs but *containers*: GPOs can't be linked to them and they're mostly legacy defaults. OUs, on the other hand, support Group Policy and delegation, and they're how companies actually organize AD. For example:
 
 ```text
 Workstations OU          Servers OU
       ↓                       ↓
-Disable LLMNR            Otras políticas de seguridad
+Disable LLMNR            Other security policies
 Enable Sysmon
 Enable auditing
 ```
 
 ---
 
-## 7. Crear usuarios
+## 7. Create users
 
-Se crean dos cuentas separadas para practicar la separación de privilegios: un usuario normal (`sergio`) y uno administrativo (`sergio.admin`).
+Two separate accounts are created to practice privilege separation: a regular user (`sergio`) and an admin user (`sergio.admin`).
 
-### Usuario normal
+### Regular user
 
-En la OU **Corp → Users** → *Create a new user*:
+In the **Corp → Users** OU → *Create a new user*:
 
-![Crear un usuario nuevo](images/ad/27_nuevo_usuario.png)
+![Create a new user](images/ad/27_nuevo_usuario.png)
 
-![Usuario sergio](images/ad/28_usuario_sergio.png)
+![User sergio](images/ad/28_usuario_sergio.png)
 
-Marcar **User must change password at next logon**.
+Check **User must change password at next logon**.
 
-![Usuario creado](images/ad/29_usuario_creado.png)
+![User created](images/ad/29_usuario_creado.png)
 
-### Usuario administrador
+### Admin user
 
-En la OU **Corp → Admins**, crear `sergio.admin`:
+In the **Corp → Admins** OU, create `sergio.admin`:
 
-![Usuario sergio.admin](images/ad/30_usuario_sergio_admin.png)
+![User sergio.admin](images/ad/30_usuario_sergio_admin.png)
 
-Luego: clic derecho sobre el usuario → **Add to a group** → escribir `Domain Admins` → **Check Names** → **OK**.
+Then: right-click the user → **Add to a group** → type `Domain Admins` → **Check Names** → **OK**.
 
-![Agregar a Domain Admins](images/ad/31_grupo_domain_admins.png)
+![Add to Domain Admins](images/ad/31_grupo_domain_admins.png)
 
-![Usuario agregado al grupo](images/ad/32_grupo_agregado.png)
+![User added to the group](images/ad/32_grupo_agregado.png)
 
 ---
 
-## Siguientes pasos
+## Next steps
 
-1. ~~Terminar el despliegue de AD~~ ✅
-2. [Unir una workstation al dominio](Win11_User_Checho.md)
-3. Verificar DNS
-4. [Verificar Group Policy](SecurityBaselineGPOs_Checho.md)
-5. Crear usuarios y grupos administrativos
-6. [Desplegar Wazuh](WazuhServer_Checho.md)
-7. Endurecer el controlador de dominio
+1. ~~Finish AD deployment~~ ✅
+2. [Join a workstation to the domain](Win11_User_Checho.md)
+3. Verify DNS
+4. [Verify Group Policy](SecurityBaselineGPOs_Checho.md)
+5. Create administrative users and groups
+6. [Deploy Wazuh](WazuhServer_Checho.md)
+7. Harden the domain controller
 
-[⬅️ Anterior: Bastion Host](DebianBastionHost_Checho.md) · [Volver al README](README.md) · [Siguiente: Workstation Windows 11 ➡️](Win11_User_Checho.md)
+[⬅️ Previous: Bastion Host](DebianBastionHost_Checho.md) · [Back to README](README.md) · [Next: Windows 11 Workstation ➡️](Win11_User_Checho.md)

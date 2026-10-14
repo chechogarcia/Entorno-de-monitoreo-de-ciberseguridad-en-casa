@@ -1,67 +1,89 @@
-# Entorno de monitoreo de ciberseguridad en casa
+# Home Cybersecurity Monitoring Lab
 
-Laboratorio casero (*homelab*) que simula la red de una pequeña empresa para practicar **operaciones de seguridad (SOC)**: segmentación con firewall, administración segura mediante un bastion host, Active Directory endurecido con GPOs, telemetría con Sysmon y monitoreo centralizado con Wazuh.
+A homelab that simulates a small company network to practice **security operations (SOC)**: firewall segmentation, secure administration through a bastion host, hardened Active Directory with GPOs, Sysmon telemetry, and centralized monitoring with Wazuh.
 
-Todo corre en máquinas virtuales sobre **VMware Workstation**, y cada paso está documentado con capturas de pantalla.
+Everything runs as virtual machines on **VMware Workstation**, and every step is documented with screenshots.
 
-## Contenido
+## Background
 
-- [Tecnologías](#tecnologías)
-- [Estado del laboratorio](#estado-del-laboratorio)
-- [Guías paso a paso](#guías-paso-a-paso)
-- [Arquitectura](#arquitectura)
-- [Direccionamiento](#direccionamiento)
-- [Segmentos de red](#segmentos-de-red)
-- [Flujos de tráfico](#flujos-de-tráfico)
-- [Filosofía de reglas en pfSense](#filosofía-de-reglas-en-pfsense)
-- [Expansión futura](#expansión-futura)
+The project started last year as an **Active Directory lab for my Network Security class** at university. After the semester ended I kept building on it: every time I learned something new (firewall segmentation, bastion hosts, MFA, Sysmon, SIEM), I added it to the lab. It has grown into a full monitoring environment, and it's still evolving.
 
-## Tecnologías
+## Contents
 
-| Área | Herramientas |
-| ---- | ------------ |
-| Virtualización | VMware Workstation |
-| Firewall / segmentación | pfSense CE 2.8 |
-| Identidad | Windows Server 2022 – Active Directory, DNS, Group Policy |
+- [Tech stack](#tech-stack)
+- [Lab status](#lab-status)
+- [Step-by-step guides](#step-by-step-guides)
+- [Beyond learning: putting the lab to real use](#beyond-learning-putting-the-lab-to-real-use)
+- [Architecture](#architecture)
+- [Addressing](#addressing)
+- [Network segments](#network-segments)
+- [Traffic flows](#traffic-flows)
+- [pfSense rule philosophy](#pfsense-rule-philosophy)
+- [Future expansion](#future-expansion)
+
+## Tech stack
+
+| Area | Tools |
+| ---- | ----- |
+| Virtualization | VMware Workstation |
+| Firewall / segmentation | pfSense CE 2.8 |
+| Identity | Windows Server 2022 – Active Directory, DNS, Group Policy |
 | Endpoints | Windows 11 Pro |
-| Acceso administrativo | Debian 13 (bastion), OpenSSH, Google Authenticator (TOTP), ufw, fail2ban, AppArmor |
-| Telemetría | Sysmon (configuración SwiftOnSecurity), auditoría avanzada de Windows, registro de PowerShell |
-| SIEM | Wazuh 4.14 sobre Ubuntu Server 24.04 LTS |
+| Administrative access | Debian 13 (bastion), OpenSSH, Google Authenticator (TOTP), ufw, fail2ban, AppArmor |
+| Telemetry | Sysmon (SwiftOnSecurity config), Windows advanced auditing, PowerShell logging |
+| SIEM | Wazuh 4.14 on Ubuntu Server 24.04 LTS |
 
-## Estado del laboratorio
+## Lab status
 
-| Componente | Estado |
-| ---------- | ------ |
-| pfSense con subredes segmentadas | ✅ |
-| Bastion host con llave SSH + MFA | ✅ |
-| Active Directory (`corp.lab`) con OUs y usuarios | ✅ |
-| Workstations Windows 11 unidas al dominio | ✅ |
-| GPOs de seguridad (LLMNR, PowerShell logging, auditoría) | ✅ |
-| Sysmon desplegado automáticamente por GPO | ✅ |
-| Wazuh con agentes en ADDC01, WIN11-01 y bastion01 | ✅ |
-| Endurecimiento adicional del DC | ⏳ Pendiente |
-| VM de ataque y creación de detecciones | ⏳ Pendiente |
-| Integración de Linux con AD | ⏳ Pendiente |
-| AD CS (PKI) | ⏳ Pendiente |
-| DMZ y VPN | ⏳ Pendiente |
+| Component | Status |
+| --------- | ------ |
+| pfSense with segmented subnets | ✅ |
+| Bastion host with SSH key + MFA | ✅ |
+| Active Directory (`corp.lab`) with OUs and users | ✅ |
+| Windows 11 workstations joined to the domain | ✅ |
+| Security GPOs (LLMNR, PowerShell logging, auditing) | ✅ |
+| Sysmon deployed automatically through GPO | ✅ |
+| Wazuh with agents on ADDC01, WIN11-01 and bastion01 | ✅ |
+| Additional DC hardening | ⏳ Planned |
+| Attacker VM and custom detections | ⏳ Planned |
+| Linux integration with AD | ⏳ Planned |
+| AD CS (PKI) | ⏳ Planned |
+| DMZ and VPN | ⏳ Planned |
+| Physical server with Red Hat OpenShift | 🔄 Learning |
 
-## Guías paso a paso
+## Step-by-step guides
 
-Se recomienda seguirlas en este orden:
+Recommended reading order:
 
-| # | Guía | Contenido |
-| - | ---- | --------- |
-| 1 | [Firewall pfSense](Firewall_Checho.md) | Instalación en VMware, interfaces WAN/LAN, solución de problemas con `vmxnet3` |
-| 2 | [Bastion Host (Debian 13)](DebianBastionHost_Checho.md) | Instalación mínima, alias FQDN en pfSense, AppArmor, ufw, fail2ban, SSH con llave + TOTP |
-| 3 | [Active Directory](ActiveDirectory_Checho.md) | Windows Server 2022, AD DS + DNS, bosque `corp.lab`, OUs y usuarios |
-| 4 | [Workstation Windows 11](Win11_User_Checho.md) | Instalación, unión al dominio y verificación |
-| 5 | [GPOs de seguridad](SecurityBaselineGPOs_Checho.md) | Workstation Baseline y DC Baseline: LLMNR, PowerShell logging, auditoría avanzada |
-| 6 | [Sysmon](Deploy_Sysmon_Checho.md) | Instalación manual y despliegue automático por GPO |
-| 7 | [Wazuh](WazuhServer_Checho.md) | Reglas de firewall, hardening de Ubuntu, instalación de Wazuh y agentes |
+| # | Guide | What it covers |
+| - | ----- | -------------- |
+| 1 | [pfSense firewall](Firewall_Checho.md) | Installation on VMware, WAN/LAN interfaces, `vmxnet3` troubleshooting |
+| 2 | [Bastion host (Debian 13)](DebianBastionHost_Checho.md) | Minimal install, FQDN aliases in pfSense, AppArmor, ufw, fail2ban, SSH with key + TOTP |
+| 3 | [Active Directory](ActiveDirectory_Checho.md) | Windows Server 2022, AD DS + DNS, `corp.lab` forest, OUs and users |
+| 4 | [Windows 11 workstation](Win11_User_Checho.md) | Installation, domain join and verification |
+| 5 | [Security GPOs](SecurityBaselineGPOs_Checho.md) | Workstation Baseline and DC Baseline: LLMNR, PowerShell logging, advanced auditing |
+| 6 | [Sysmon](Deploy_Sysmon_Checho.md) | Manual install and automatic deployment through GPO |
+| 7 | [Wazuh](WazuhServer_Checho.md) | Firewall rules, Ubuntu hardening, Wazuh install and agents |
 
 ---
 
-## Arquitectura
+## Beyond learning: putting the lab to real use
+
+The goal isn't for this lab to be only an academic exercise. I want it to be infrastructure I actually use, so the security work is tested against real services and real traffic:
+
+- **Practice in a controlled environment** — run attack simulations, test detections and try out new tools safely, without touching any system I don't own.
+- **Self-hosted services** — host my own services behind the firewall, such as a **Minecraft server to play with my friends**, published through the DMZ and monitored by Wazuh like any other production service.
+- **Personal projects** — use the same segmentation, bastion and monitoring setup as the base for anything else I want to self-host.
+
+Running real services makes the lab more realistic: there's legitimate traffic to separate from suspicious activity, exposed services to protect, and uptime that actually matters.
+
+### Next stage: physical server and OpenShift
+
+We recently got a **physical server at home**, and I'm currently learning **Red Hat OpenShift** on it. The goal is to take what I've built in this VMware lab (segmentation, hardened access, centralized monitoring) and learn how to deploy a similar architecture the way it would run in a **real enterprise environment**: on dedicated hardware, with containers and an orchestration platform instead of standalone VMs.
+
+---
+
+## Architecture
 
 ```text
                                     Internet
@@ -76,112 +98,113 @@ Se recomienda seguirlas en este orden:
   10.0.10   10.0.20      10.0.30   10.0.40        10.0.50         10.0.60
 ```
 
-El diseño aplica el principio de **separación de funciones**: usuarios, servicios de producción, administración, operaciones de seguridad, servicios expuestos a Internet y acceso remoto están aislados entre sí. Así el laboratorio puede crecer (AD CS, Security Onion, más controladores de dominio) y sirve tanto para operaciones defensivas como para escenarios de ataque controlados.
+The design follows the principle of **separation of duties**: users, production services, management, security operations, internet-facing services and remote access are all isolated from each other. This lets the lab grow (AD CS, Security Onion, more domain controllers) and supports both defensive operations and controlled attack scenarios.
 
-## Direccionamiento
+## Addressing
 
-| Segmento | Subred | Interfaz pfSense | Gateway | Hosts |
-| -------- | ------ | ---------------- | ------- | ----- |
+| Segment | Subnet | pfSense interface | Gateway | Hosts |
+| ------- | ------ | ----------------- | ------- | ----- |
 | Users | `10.0.10.0/24` | LAN | `10.0.10.1` | `WIN11-01` (`10.0.10.110`), `WIN11-02` |
 | Servers | `10.0.20.0/24` | OPT1 | `10.0.20.1` | `ADDC01` (`10.0.20.10`) |
-| DMZ | `10.0.30.0/27` | — | — | Pendiente |
+| DMZ | `10.0.30.0/27` | — | — | Planned |
 | Management | `10.0.40.0/28` | OPT3 | `10.0.40.1` | `bastion01` (`10.0.40.10`), Admin VM (`10.0.40.11`) |
 | Security | `10.0.50.0/27` | OPT4 | `10.0.50.1` | `WAZUH01` (`10.0.50.10`) |
-| VPN | `10.0.60.0/24` | — | — | Pendiente |
+| VPN | `10.0.60.0/24` | — | — | Planned |
 
-| Dato | Valor |
+| Item | Value |
 | ---- | ----- |
-| Dominio de AD | `corp.lab` (NetBIOS `CORP`) |
-| Dominio del bastion | `lab.internal` |
-| DNS interno | `10.0.20.10` (ADDC01) |
+| AD domain | `corp.lab` (NetBIOS `CORP`) |
+| Bastion domain | `lab.internal` |
+| Internal DNS | `10.0.20.10` (ADDC01) |
 
 ---
 
-## Segmentos de red
+## Network segments
 
 ### 1. Users – `10.0.10.0/24`
 
-Simula los equipos de los empleados.
+Simulates employee devices.
 
 ```text
 WIN11-01
 WIN11-02
-Ubuntu Client         (futuro)
-Attack VM             (futuro)
+Ubuntu Client         (planned)
+Attack VM             (planned)
 ```
 
-**Propósito:** usuarios del dominio, actividad diaria, simulación de phishing, ejecución de malware, pruebas de Red Team, Atomic Red Team y ejercicios de movimiento lateral.
+**Purpose:** domain users, daily workstation activity, phishing simulation, malware execution, Red Team testing, Atomic Red Team and lateral movement exercises.
 
-Estos equipos **no** deben tener privilegios administrativos sobre el entorno.
+These machines must **not** have administrative privileges over the environment.
 
 ### 2. Servers – `10.0.20.0/24`
 
-Servicios de infraestructura: los activos de "producción".
+Infrastructure services: the "production" assets.
 
 ```text
 ADDC01
-File Server                 (futuro)
-SQL Server                  (futuro)
-IIS Server                  (futuro)
-Linux Application Server    (futuro)
-GitLab                      (futuro)
+File Server                 (planned)
+SQL Server                  (planned)
+IIS Server                  (planned)
+Linux Application Server    (planned)
+GitLab                      (planned)
 ```
 
-**Propósito:** Active Directory, DNS, archivos compartidos, aplicaciones internas y bases de datos.
+**Purpose:** Active Directory, DNS, file sharing, internal applications and databases.
 
 ### 3. DMZ – `10.0.30.0/27`
 
-Todo lo expuesto a usuarios externos.
+Anything exposed to external users, such as the planned game server.
 
 ```text
-Servidor web público
+Public web server
 Reverse proxy
-VPN gateway (opcional)
+Game server (Minecraft)
+VPN gateway (optional)
 Mail relay
 FTP/SFTP
 ```
 
-Estos sistemas **nunca** deben tener acceso libre a las redes internas.
+These systems must **never** have unrestricted access to internal networks.
 
 ### 4. Management – `10.0.40.0/28`
 
-Solo sistemas administrativos.
+Administrative systems only.
 
 ```text
 Admin VM
 Bastion Host
-Ansible Server   (futuro)
-WSUS             (futuro)
-vCenter          (futuro)
+Ansible Server   (planned)
+WSUS             (planned)
+vCenter          (planned)
 ```
 
-**Propósito:** SSH, RDP, gestión de GPOs, administración de pfSense y del hipervisor.
+**Purpose:** SSH, RDP, GPO management, pfSense and hypervisor management.
 
-Ningún usuario regular debe acceder a esta subred.
+No regular user should ever access this subnet.
 
 ### 5. Security – `10.0.50.0/27`
 
-El SOC del laboratorio.
+The lab's SOC.
 
 ```text
 Wazuh
-TheHive          (futuro)
-Cortex           (futuro)
-MISP             (futuro)
-Velociraptor     (futuro)
-REMnux           (futuro)
-Malware sandbox  (futuro)
+TheHive          (planned)
+Cortex           (planned)
+MISP             (planned)
+Velociraptor     (planned)
+REMnux           (planned)
+Malware sandbox  (planned)
 ```
 
-**Propósito:** detección, monitoreo, DFIR, threat intelligence y respuesta a incidentes.
+**Purpose:** detection, monitoring, DFIR, threat intelligence and incident response.
 
-Solo los administradores deben poder alcanzar esta subred.
+Only administrators should be able to reach this subnet.
 
 ### 6. VPN – `10.0.60.0/24`
 
-Administradores remotos (clientes OpenVPN / WireGuard).
+Remote administrators (OpenVPN / WireGuard clients).
 
-Los usuarios de VPN **no** deben llegar directamente a Users ni a Servers, sino pasar por el bastion:
+VPN users must **not** land directly in Users or Servers; they go through the bastion instead:
 
 ```text
 VPN Client
@@ -196,13 +219,13 @@ Bastion
 Servers
 ```
 
-Esto modela un flujo seguro de administración remota.
+This models a secure remote administration workflow.
 
 ---
 
-## Flujos de tráfico
+## Traffic flows
 
-### Workstation de usuario
+### User workstation
 
 ```text
 WIN11
@@ -214,7 +237,7 @@ WIN11
       └──── Wazuh Agent ─► Wazuh
 ```
 
-### Administrador
+### Administrator
 
 ```text
 Admin VM
@@ -246,30 +269,32 @@ Bastion Agent ──┼──► Wazuh
 Ubuntu Agent ───┘
 ```
 
-Los agentes inician la conexión hacia Wazuh; Wazuh no necesita abrir sesiones hacia los endpoints.
+Agents initiate the connection to Wazuh; Wazuh doesn't need to open sessions back to the endpoints.
 
 ---
 
-## Filosofía de reglas en pfSense
+## pfSense rule philosophy
 
-Política por defecto: **denegar todo** y permitir solo lo explícitamente necesario.
+Default policy: **deny everything**, and only allow what is explicitly needed.
 
-| Segmento | Permitir |
-| -------- | -------- |
-| **Users** | DNS, Kerberos, LDAP, SMB (si hace falta), HTTP/HTTPS a Internet, agente → Wazuh |
-| **Servers** | DNS, replicación de dominio (si se agrega otro DC), tráfico de aplicaciones, agente → Wazuh |
-| **Management** | SSH, RDP, WinRM, HTTPS, administración de pfSense, dashboard de Wazuh |
-| **Security** | Recibir agentes de Wazuh, recibir syslog (si se configura), Internet para actualizaciones, acceso administrativo desde Management |
-| **VPN** | VPN → Management, VPN → Bastion, VPN → dashboard de Wazuh (opcional) |
+| Segment | Allow |
+| ------- | ----- |
+| **Users** | DNS, Kerberos, LDAP, SMB (if needed), HTTP/HTTPS to the Internet, agent → Wazuh |
+| **Servers** | DNS, domain replication (if another DC is added), application traffic, agent → Wazuh |
+| **Management** | SSH, RDP, WinRM, HTTPS, pfSense management, Wazuh dashboard |
+| **Security** | Incoming Wazuh agents, incoming syslog (if configured), Internet for updates, admin access from Management |
+| **VPN** | VPN → Management, VPN → Bastion, VPN → Wazuh dashboard (optional) |
 
-Los clientes VPN **no** deben tener acceso libre a la red de Users.
+VPN clients must **not** get unrestricted access to the Users network.
 
 ---
 
-## Expansión futura
+## Future expansion
 
-| Segmento | Ideas |
-| -------- | ----- |
-| **Servers** | PKI / AD CS, Exchange (o servidor de correo), aplicación web Linux, servidor SIEM de pruebas |
-| **Security** | Suricata, Zeek, Security Onion, escaneo con YARA, pruebas de reglas Sigma, MITRE ATT&CK Navigator, OSQuery Fleet |
-| **Management** | Ansible, Windows Admin Center, gestión de parches, servidor de automatización |
+| Segment | Ideas |
+| ------- | ----- |
+| **Servers** | PKI / AD CS, Exchange (or a mail server), Linux web application, test SIEM server |
+| **DMZ** | Minecraft server for friends, reverse proxy, personal web services |
+| **Security** | Suricata, Zeek, Security Onion, YARA scanning, Sigma rule testing, MITRE ATT&CK Navigator, OSQuery Fleet |
+| **Management** | Ansible, Windows Admin Center, patch management, automation server |
+| **Platform** | Move to the physical server: rebuild the architecture on Red Hat OpenShift, containerized services, enterprise-style deployment |

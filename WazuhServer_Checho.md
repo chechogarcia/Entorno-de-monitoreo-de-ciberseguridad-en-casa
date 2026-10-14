@@ -1,93 +1,93 @@
-# 7. Servidor Wazuh (SIEM)
+# 7. Wazuh Server (SIEM)
 
-[⬅️ Anterior: Sysmon](Deploy_Sysmon_Checho.md) · [Volver al README](README.md)
+[⬅️ Previous: Sysmon](Deploy_Sysmon_Checho.md) · [Back to README](README.md)
 
-**Wazuh** centraliza los logs y la telemetría de los equipos del laboratorio (eventos de Windows, Sysmon, logs de Linux) y genera alertas. Se instala en la subred de Security con sus tres componentes (indexer, server y dashboard) en una sola VM.
+**Wazuh** centralizes logs and telemetry from the lab machines (Windows events, Sysmon, Linux logs) and generates alerts. It's installed on the Security subnet with all three components (indexer, server and dashboard) on a single VM.
 
-## Contenido
+## Contents
 
-- [Especificaciones](#especificaciones)
-- [Reglas de pfSense para la subred Security](#reglas-de-pfsense-para-la-subred-security)
-- [Instalación de Ubuntu Server](#instalación-de-ubuntu-server)
-- [Hardening del servidor](#hardening-del-servidor)
-- [Reglas de pfSense para Wazuh](#reglas-de-pfsense-para-wazuh)
-- [Instalar Wazuh](#instalar-wazuh)
-- [Instalar agentes](#instalar-agentes)
+- [Specs](#specs)
+- [pfSense rules for the Security subnet](#pfsense-rules-for-the-security-subnet)
+- [Installing Ubuntu Server](#installing-ubuntu-server)
+- [Server hardening](#server-hardening)
+- [pfSense rules for Wazuh](#pfsense-rules-for-wazuh)
+- [Install Wazuh](#install-wazuh)
+- [Install the agents](#install-the-agents)
 
-## Especificaciones
+## Specs
 
-| Parámetro | Valor |
+| Parameter | Value |
 | --------- | ----- |
 | Hostname | `WAZUH01` |
-| Sistema operativo | Ubuntu Server 24.04 LTS |
+| Operating system | Ubuntu Server 24.04 LTS |
 | vCPU | 4 |
-| RAM | 8 GB (12 GB recomendado) |
-| Disco | 50 GB |
-| Red | Security – `10.0.50.0/27` (interfaz OPT4 en pfSense) |
+| RAM | 8 GB (12 GB recommended) |
+| Disk | 50 GB |
+| Network | Security – `10.0.50.0/27` (OPT4 interface in pfSense) |
 | IP | `10.0.50.10` |
 | Gateway | `10.0.50.1` |
 | DNS | `10.0.20.10` (ADDC01) |
 
-### Puertos de Wazuh
+### Wazuh ports
 
-| Puerto | Protocolo | Uso | Origen |
-| ------ | --------- | --- | ------ |
-| 443 | TCP | Dashboard web | Management |
-| 22 | TCP | SSH de administración | Management |
-| 1514 | TCP | Comunicación de los agentes | Users, Servers, Management |
-| 1515 | TCP | Registro (*enrollment*) de agentes | Users, Servers, Management |
+| Port | Protocol | Use | Source |
+| ---- | -------- | --- | ------ |
+| 443 | TCP | Web dashboard | Management |
+| 22 | TCP | Administrative SSH | Management |
+| 1514 | TCP | Agent communication | Users, Servers, Management |
+| 1515 | TCP | Agent enrollment | Users, Servers, Management |
 
-> Los agentes inician la conexión hacia Wazuh; el servidor no necesita abrir sesiones hacia los endpoints.
+> Agents initiate the connection to Wazuh; the server doesn't need to open sessions to the endpoints.
 
 ---
 
-## Reglas de pfSense para la subred Security
+## pfSense rules for the Security subnet
 
-Antes de instalar, configurar en pfSense las reglas de la interfaz de Security.
+Before installing, set up the rules on pfSense's Security interface.
 
-### Regla 1 – Salida a Internet (HTTP/HTTPS)
+### Rule 1 – Internet access (HTTP/HTTPS)
 
-Para actualizaciones de Ubuntu, paquetes de Wazuh y, a futuro, descargas de *threat intelligence*.
+For Ubuntu updates, Wazuh packages and, later on, threat intelligence downloads.
 
-| Acción | Interfaz | Protocolo | Origen | Destino | Puerto |
-| ------ | -------- | --------- | ------ | ------- | ------ |
+| Action | Interface | Protocol | Source | Destination | Port |
+| ------ | --------- | -------- | ------ | ----------- | ---- |
 | Pass | Security | IPv4 TCP | Security net | any | 443 |
 | Pass | Security | IPv4 TCP | Security net | any | 80 |
 
-### Regla 2 – DNS solo hacia el controlador de dominio
+### Rule 2 – DNS only to the domain controller
 
-En lugar de permitir DNS hacia cualquier destino, permitir solo consultas al DNS integrado con AD:
+Instead of allowing DNS to any destination, only allow queries to the AD-integrated DNS server:
 
-| Acción | Origen | Destino | Puerto |
-| ------ | ------ | ------- | ------ |
+| Action | Source | Destination | Port |
+| ------ | ------ | ----------- | ---- |
 | Pass | Security net | `10.0.20.10` | 53 TCP/UDP |
 
-### Regla 3 – NTP
+### Rule 3 – NTP
 
-Usar pfSense (o el DC) como fuente de hora:
+Use pfSense (or the DC) as the time source:
 
-| Acción | Origen | Destino | Puerto |
-| ------ | ------ | ------- | ------ |
+| Action | Source | Destination | Port |
+| ------ | ------ | ----------- | ---- |
 | Pass | Security net | `10.0.50.1` | 123 UDP |
 
-### Regla 4 – Bloquear tráfico hacia redes internas (opcional)
+### Rule 4 – Block traffic to internal networks (optional)
 
-Cuando el laboratorio esté completo, bloquear explícitamente el tráfico innecesario desde Security hacia otras redes internas:
+Once the lab is complete, explicitly block unnecessary traffic from Security to other internal networks:
 
-| Acción | Origen | Destino |
-| ------ | ------ | ------- |
+| Action | Source | Destination |
+| ------ | ------ | ----------- |
 | Block | Security net | Users net |
 | Block | Security net | Servers net |
 | Block | Security net | DMZ net |
 
 ---
 
-## Instalación de Ubuntu Server
+## Installing Ubuntu Server
 
-- Durante la instalación, marcar **Install OpenSSH server**. En la pantalla de *Featured server snaps* no seleccionar ninguno.
-- Mientras dura la instalación, mantener en pfSense una regla temporal que permita a esta subred salir a Internet.
+- During installation, check **Install OpenSSH server**. On the *Featured server snaps* screen, don't select any.
+- While the install runs, keep a temporary pfSense rule that lets this subnet reach the Internet.
 
-Después de instalar, actualizar y reiniciar:
+After installing, update and reboot:
 
 ```bash
 sudo apt update
@@ -95,29 +95,29 @@ sudo apt full-upgrade -y
 sudo reboot
 ```
 
-### IP estática con Netplan
+### Static IP with Netplan
 
-1. Ver el nombre de la interfaz (normalmente `eth0`, `enp0s3` o `ens33`):
+1. Find the interface name (usually `eth0`, `enp0s3` or `ens33`):
 
    ```bash
    ip a
    ```
 
-2. Ubicar el archivo de Netplan (algo como `00-installer-config.yaml`, `50-cloud-init.yaml` o `01-netcfg.yaml`):
+2. Find the Netplan file (something like `00-installer-config.yaml`, `50-cloud-init.yaml` or `01-netcfg.yaml`):
 
    ```bash
    ls /etc/netplan/
-   sudo nano /etc/netplan/<archivo>.yaml
+   sudo nano /etc/netplan/<file>.yaml
    ```
 
-3. Configurar la IP estática:
+3. Configure the static IP:
 
    ```yaml
    network:
      version: 2
      renderer: networkd
      ethernets:
-       ens33:            # reemplazar por el nombre de la interfaz
+       ens33:            # replace with your interface name
          dhcp4: false
          addresses:
            - 10.0.50.10/27
@@ -129,40 +129,40 @@ sudo reboot
              - 10.0.20.10
    ```
 
-   > ⚠️ YAML no admite tabulaciones: usar solo espacios y respetar la indentación y los guiones `-` exactamente como en el ejemplo.
+   > ⚠️ YAML doesn't allow tabs: use spaces only and keep the indentation and `-` dashes exactly as shown.
 
-   ![Configuración de Netplan](images/wazuh/01_netplan.png)
+   ![Netplan configuration](images/wazuh/01_netplan.png)
 
-4. Restringir los permisos del archivo (Netplan advierte si otros usuarios pueden leerlo) y aplicar:
+4. Restrict the file's permissions (Netplan warns if other users can read it) and apply:
 
    ```bash
-   sudo chown root:root /etc/netplan/<archivo>.yaml
-   sudo chmod 600 /etc/netplan/<archivo>.yaml
+   sudo chown root:root /etc/netplan/<file>.yaml
+   sudo chmod 600 /etc/netplan/<file>.yaml
    sudo netplan apply
    ```
 
-   ![Permisos del archivo de Netplan](images/wazuh/02_permisos_netplan.png)
+   ![Netplan file permissions](images/wazuh/02_permisos_netplan.png)
 
 ---
 
-## Hardening del servidor
+## Server hardening
 
-### 1. Crear un usuario administrativo
+### 1. Create an administrative user
 
 ```bash
 sudo adduser sergioadmin
-# -a = append (agregar sin quitar otros grupos), -G = grupo
+# -a = append (add without removing other groups), -G = group
 sudo usermod -aG sudo sergioadmin
 ```
 
-Probar:
+Test it:
 
 ```bash
 su - sergioadmin
-sudo whoami      # debe responder: root
+sudo whoami      # should print: root
 ```
 
-### 2. Configurar SSH
+### 2. Configure SSH
 
 ```bash
 sudo nano /etc/ssh/sshd_config
@@ -179,7 +179,7 @@ LoginGraceTime 30
 X11Forwarding no
 ```
 
-> ⚠️ Con `PasswordAuthentication no`, copiar antes la llave pública del administrador (`ssh-copy-id sergioadmin@10.0.50.10`) para no quedarse sin acceso.
+> ⚠️ With `PasswordAuthentication no`, copy the administrator's public key first (`ssh-copy-id sergioadmin@10.0.50.10`) so you don't lock yourself out.
 
 ```bash
 sudo sshd -t
@@ -188,58 +188,58 @@ sudo systemctl enable ssh
 sudo systemctl status ssh
 ```
 
-### 3. Instalar fail2ban
+### 3. Install fail2ban
 
 ```bash
 sudo apt install fail2ban -y
 sudo systemctl status fail2ban
 ```
 
-![SSH y fail2ban activos](images/wazuh/03_ssh_fail2ban.png)
+![SSH and fail2ban running](images/wazuh/03_ssh_fail2ban.png)
 
-### 4. Configurar ufw
+### 4. Configure ufw
 
-Aunque el firewall principal sea pfSense, un firewall local agrega una capa más de protección:
+Even though pfSense is the main firewall, a host firewall adds another layer of protection:
 
 ```bash
 sudo ufw default deny incoming
 sudo ufw default allow outgoing
-sudo ufw allow from 10.0.40.0/28 to any port 22    # SSH solo desde Management
+sudo ufw allow from 10.0.40.0/28 to any port 22    # SSH only from Management
 ```
 
-![Reglas iniciales de ufw](images/wazuh/04_ufw.png)
+![Initial ufw rules](images/wazuh/04_ufw.png)
 
-El resto de reglas de `ufw` se agregan después de instalar Wazuh.
-
----
-
-## Reglas de pfSense para Wazuh
-
-Cada regla se crea en la **interfaz de origen** del tráfico.
-
-| Origen (interfaz) | Destino | Puertos |
-| ----------------- | ------- | ------- |
-| Management (OPT3) | Security | 22 (SSH), 443 (Dashboard), 1514 TCP (agente del bastion), 1515 TCP (enrollment del bastion) |
-| Users (LAN) | Security | 1514 TCP (agente), 1515 TCP (enrollment) |
-| Servers (OPT1) | Security | 1514 TCP (agente), 1515 TCP (enrollment) |
-
-![Reglas en Management (OPT3)](images/wazuh/05_reglas_management.png)
-
-![Reglas en Users (LAN)](images/wazuh/06_reglas_users.png)
-
-![Reglas en Servers (OPT1)](images/wazuh/07_reglas_servers.png)
+The rest of the `ufw` rules are added after installing Wazuh.
 
 ---
 
-## Instalar Wazuh
+## pfSense rules for Wazuh
 
-Seguir la guía oficial: <https://documentation.wazuh.com/current/installation-guide/index.html>
+Each rule is created on the **source interface** of the traffic.
 
-La guía permite instalar el **indexer**, el **server** y el **dashboard** por separado; en este laboratorio se usó la instalación **paso a paso** (*step-by-step*) con los tres componentes en `WAZUH01`.
+| Source (interface) | Destination | Ports |
+| ------------------ | ----------- | ----- |
+| Management (OPT3) | Security | 22 (SSH), 443 (Dashboard), 1514 TCP (bastion agent), 1515 TCP (bastion enrollment) |
+| Users (LAN) | Security | 1514 TCP (agent), 1515 TCP (enrollment) |
+| Servers (OPT1) | Security | 1514 TCP (agent), 1515 TCP (enrollment) |
 
-> 🔐 Al terminar, el instalador muestra en la terminal credenciales generadas aleatoriamente. **Guardarlas en un gestor de contraseñas**: son las que se usan para entrar al dashboard. Nunca subirlas al repositorio ni dejarlas en capturas de pantalla.
+![Rules on Management (OPT3)](images/wazuh/05_reglas_management.png)
 
-Verificar los servicios:
+![Rules on Users (LAN)](images/wazuh/06_reglas_users.png)
+
+![Rules on Servers (OPT1)](images/wazuh/07_reglas_servers.png)
+
+---
+
+## Install Wazuh
+
+Follow the official guide: <https://documentation.wazuh.com/current/installation-guide/index.html>
+
+The guide lets you install the **indexer**, **server** and **dashboard** separately; this lab used the **step-by-step** installation with all three components on `WAZUH01`.
+
+> 🔐 When it finishes, the installer prints randomly generated credentials in the terminal. **Store them in a password manager**: they're what you use to log in to the dashboard. Never commit them to the repository or leave them in screenshots.
+
+Check the services:
 
 ```bash
 sudo systemctl status wazuh-manager
@@ -247,19 +247,19 @@ sudo systemctl status wazuh-indexer
 sudo systemctl status wazuh-dashboard
 ```
 
-### Reglas de ufw para Wazuh
+### ufw rules for Wazuh
 
 ```bash
-# Dashboard y SSH desde Management
+# Dashboard and SSH from Management
 sudo ufw allow from 10.0.40.0/28 to any port 443 proto tcp
 sudo ufw allow from 10.0.40.0/28 to any port 22 proto tcp
 
-# Agentes (1514) desde Users, Servers y Management
+# Agents (1514) from Users, Servers and Management
 sudo ufw allow from 10.0.10.0/24 to any port 1514 proto tcp
 sudo ufw allow from 10.0.20.0/24 to any port 1514 proto tcp
 sudo ufw allow from 10.0.40.0/28 to any port 1514 proto tcp
 
-# Enrollment (1515) desde Users, Servers y Management
+# Enrollment (1515) from Users, Servers and Management
 sudo ufw allow from 10.0.10.0/24 to any port 1515 proto tcp
 sudo ufw allow from 10.0.20.0/24 to any port 1515 proto tcp
 sudo ufw allow from 10.0.40.0/28 to any port 1515 proto tcp
@@ -268,70 +268,70 @@ sudo ufw enable
 sudo ufw status numbered
 ```
 
-### Cambiar las contraseñas de los usuarios de la API
+### Change the API user passwords
 
-Las cuentas `wazuh` y `wazuh-wui` de la API traen contraseñas generadas por el instalador; se pueden cambiar por unas propias:
+The `wazuh` and `wazuh-wui` API accounts come with installer-generated passwords; you can replace them with your own:
 
 ```bash
 sudo /var/ossec/framework/python/bin/python3 << 'EOF'
 from wazuh.rbac.orm import AuthenticationManager
 with AuthenticationManager() as auth:
-    print("wazuh:", auth.update_user(user_id=1, password='<NUEVA_CONTRASEÑA>'))
-    print("wazuh-wui:", auth.update_user(user_id=2, password='<NUEVA_CONTRASEÑA>'))
+    print("wazuh:", auth.update_user(user_id=1, password='<NEW_PASSWORD>'))
+    print("wazuh-wui:", auth.update_user(user_id=2, password='<NEW_PASSWORD>'))
 EOF
 sudo systemctl restart wazuh-manager
 ```
 
-Probar que la API acepta la nueva contraseña (debe devolver un token JWT):
+Check that the API accepts the new password (it should return a JWT token):
 
 ```bash
-curl -u wazuh:'<NUEVA_CONTRASEÑA>' -k -X POST \
+curl -u wazuh:'<NEW_PASSWORD>' -k -X POST \
   "https://localhost:55000/security/user/authenticate?raw=true"
 ```
 
-Actualizar la contraseña de `wazuh-wui` en la configuración del dashboard, en la sección `hosts:` de `/usr/share/wazuh-dashboard/data/wazuh/config/wazuh.yml`, y reiniciar el servicio:
+Update the `wazuh-wui` password in the dashboard configuration, in the `hosts:` section of `/usr/share/wazuh-dashboard/data/wazuh/config/wazuh.yml`, and restart the service:
 
 ```bash
 sudo systemctl restart wazuh-dashboard
 ```
 
-> 🔐 Usar contraseñas únicas y no reutilizarlas en otros servicios. No ejecutar este comando en una terminal que se vaya a capturar o grabar.
+> 🔐 Use unique passwords and don't reuse them for other services. Don't run this command in a terminal you're going to screenshot or record.
 
-### Probar el dashboard
+### Test the dashboard
 
-Desde la Admin VM, abrir `https://10.0.50.10` en el navegador e iniciar sesión.
+From the Admin VM, open `https://10.0.50.10` in the browser and log in.
 
-![Dashboard de Wazuh sin agentes](images/wazuh/08_dashboard.png)
+![Wazuh dashboard with no agents](images/wazuh/08_dashboard.png)
 
 ---
 
-## Instalar agentes
+## Install the agents
 
-Con el dashboard funcionando, instalar los agentes en los equipos para que reporten a Wazuh:
+With the dashboard working, install the agents on the machines so they report to Wazuh:
 
-| Sistema | Guía |
-| ------- | ---- |
+| System | Guide |
+| ------ | ----- |
 | Windows | <https://documentation.wazuh.com/current/installation-guide/wazuh-agent/wazuh-agent-package-windows.html> |
 | Linux | <https://documentation.wazuh.com/current/installation-guide/wazuh-agent/wazuh-agent-package-linux.html> |
 
-Equipos con agente:
+Machines with an agent:
 
-| Agente | IP | Sistema |
-| ------ | -- | ------- |
+| Agent | IP | System |
+| ----- | -- | ------ |
 | ADDC01 | `10.0.20.10` | Windows Server 2022 |
 | WIN11-01 | `10.0.10.110` | Windows 11 Pro |
 | bastion01 | `10.0.40.10` | Debian 13 |
 
-![Los tres agentes activos en Wazuh](images/wazuh/09_agentes_activos.png)
+![All three agents active in Wazuh](images/wazuh/09_agentes_activos.png)
 
 ---
 
-## Siguientes pasos
+## Next steps
 
-- Enviar los eventos de Sysmon a Wazuh y verificar la telemetría
-- Endurecer más el DC
-- Montar la VM de ataque y generar detecciones
-- Integrar Linux con AD
-- Agregar AD CS
+- Send Sysmon events to Wazuh and verify telemetry
+- Harden the DC further
+- Build the attacker VM and generate detections
+- Integrate Linux with AD
+- Add AD CS
 
-[⬅️ Anterior: Sysmon](Deploy_Sysmon_Checho.md) · [Volver al README](README.md)
+[⬅️ Previous: Sysmon](Deploy_Sysmon_Checho.md) · [Back to README](README.md)
