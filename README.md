@@ -49,6 +49,7 @@ The project started last year as an **Active Directory lab for my Network Securi
 | Linux integration with AD | ⏳ Planned |
 | AD CS (PKI) | ⏳ Planned |
 | DMZ and VPN | ⏳ Planned |
+| Physical server with Red Hat OpenShift | 🔄 Learning |
 
 ## Step-by-step guides
 
@@ -75,6 +76,10 @@ The goal isn't for this lab to be only an academic exercise. I want it to be inf
 - **Personal projects** — use the same segmentation, bastion and monitoring setup as the base for anything else I want to self-host.
 
 Running real services makes the lab more realistic: there's legitimate traffic to separate from suspicious activity, exposed services to protect, and uptime that actually matters.
+
+### Next stage: physical server and OpenShift
+
+We recently got a **physical server at home**, and I'm currently learning **Red Hat OpenShift** on it. The goal is to take what I've built in this VMware lab (segmentation, hardened access, centralized monitoring) and learn how to deploy a similar architecture the way it would run in a **real enterprise environment**: on dedicated hardware, with containers and an orchestration platform instead of standalone VMs.
 
 ---
 
@@ -292,3 +297,4 @@ VPN clients must **not** get unrestricted access to the Users network.
 | **DMZ** | Minecraft server for friends, reverse proxy, personal web services |
 | **Security** | Suricata, Zeek, Security Onion, YARA scanning, Sigma rule testing, MITRE ATT&CK Navigator, OSQuery Fleet |
 | **Management** | Ansible, Windows Admin Center, patch management, automation server |
+| **Platform** | Move to the physical server: rebuild the architecture on Red Hat OpenShift, containerized services, enterprise-style deployment |
