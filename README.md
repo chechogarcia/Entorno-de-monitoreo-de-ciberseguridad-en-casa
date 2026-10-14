@@ -72,7 +72,7 @@ Recommended reading order:
 The goal isn't for this lab to be only an academic exercise. I want it to be infrastructure I actually use, so the security work is tested against real services and real traffic:
 
 - **Practice in a controlled environment** — run attack simulations, test detections and try out new tools safely, without touching any system I don't own.
-- **Self-hosted services** — host my own services behind the firewall, such as a **Minecraft server to play with my friends**, published through the DMZ and monitored by Wazuh like any other production service.
+- **Self-hosted services** — host my own services behind the firewall, published through the DMZ and monitored by Wazuh like any other production service.
 - **Personal projects** — use the same segmentation, bastion and monitoring setup as the base for anything else I want to self-host.
 
 Running real services makes the lab more realistic: there's legitimate traffic to separate from suspicious activity, exposed services to protect, and uptime that actually matters.
